@@ -12,6 +12,7 @@ camera : rl.Camera2D
 
 BLOCK_WIDTH :u32: 32
 block : [BLOCK_WIDTH*BLOCK_WIDTH]u32
+mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32
 
 rnd : rand.Rand
 
@@ -91,6 +92,18 @@ main :: proc() {
             camera.target += last-now
         }
 
+        hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
+        hover_cell :[2]int= {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
+        if rl.IsMouseButtonReleased(.LEFT) {
+            if in_range(hover_cell.x, hover_cell.y) {
+                // ** sweep
+                idx := get_index(hover_cell.x, hover_cell.y)
+                if mask[idx] == 0 {
+                    mask[idx] = 1
+                }
+            }
+        }
+
         zoom_speed_max, zoom_speed_min :f32= 1.2, 0.2
         zoom_max, zoom_min :f32= 36, 18
         zoom_speed :f32= ((camera.zoom-zoom_min)/(zoom_max-zoom_min)) * ( zoom_speed_max-zoom_speed_min ) + zoom_speed_min
@@ -106,34 +119,46 @@ main :: proc() {
 
         for x in 0..<BLOCK_WIDTH {
             for y in 0..<BLOCK_WIDTH {
-                v := block[x+y*BLOCK_WIDTH]
+                idx := get_index(cast(int)x,cast(int)y)
+                v,m := block[idx], mask[idx]
                 pos :rl.Vector2= {cast(f32)x,cast(f32)y}
-                if v == FLAG_BOMB {
-                    rl.DrawRectangleV(pos, {0.9, 0.9}, {140,50,40,255})
-                    // rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
-                    rl.DrawRectangleV(pos, {0.8, 0.8}, {200,10,20,255})
-                } else {
+                if m == 0 {
                     rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
                     rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
-                    if v != 0 {
-                        // rl.DrawText(, pos, )
-                        rl.DrawTextEx(rl.GetFontDefault(), fmt.ctprintf("{}", v),
-                            pos+{0.2, 0.1}, 0.8, 1, rl.Color{80, 120, 90, 255})
+                } else {
+                    if v == FLAG_BOMB {
+                        rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
+                        rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,60,255})
+                        rl.DrawCircleV(pos+{0.4,0.4}, 0.3, {200, 70, 40, 255})
+                    } else {
+                        rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
+                        rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,80,255})
+                        if v != 0 {
+                            rl.DrawTextEx(rl.GetFontDefault(), fmt.ctprintf("{}", v),
+                                pos+{0.2, 0.1}, 0.8, 1, rl.Color{80, 120, 90, 255})
+                        }
                     }
                 }
             }
         }
+
+        rl.DrawRectangleV({cast(f32)hover_cell.x, cast(f32)hover_cell.y}, {0.9, 0.9}, {255,255,255, 80})
+
         rl.DrawLine(-100, 0, 100, 0, rl.Color{255,255,0, 255})
         rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
 
         rl.EndMode2D()
 
-        rl.DrawText(fmt.ctprintf("zoom: {}", camera.zoom), 10, 10+30, 28, rl.Color{0,255,255,255})
-        rl.DrawText(fmt.ctprintf("target: {}", camera.target), 10, 10+30+30, 28, rl.Color{0,255,255,255})
-        rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, rl.Color{0,255,255,255})
+        debug_color := rl.Color{0,255,0,255}
+        rl.DrawText(fmt.ctprintf("zoom: {}", camera.zoom), 10, 10+30, 28, debug_color)
+        rl.DrawText(fmt.ctprintf("target: {}", camera.target), 10, 10+30+30, 28, debug_color)
+        rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
 
         rl.EndDrawing()
 
     }
     rl.CloseWindow()
+}
+
+sweep :: proc(x,y: int) {
 }
