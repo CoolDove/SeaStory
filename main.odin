@@ -14,9 +14,13 @@ BLOCK_WIDTH :u32: 32
 block : [BLOCK_WIDTH*BLOCK_WIDTH]u32
 mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32
 
+dead : bool
+
 rnd : rand.Rand
 
-FLAG_BOMB :u32= 0xff
+ITEM_BOMB :u32= 0xff
+
+FLAG_MARKED :u32= 0xef
 
 get_index :: proc(x,y: int) -> int {
     return x+y*(auto_cast BLOCK_WIDTH)
@@ -37,19 +41,19 @@ main :: proc() {
 
     rand.init(&rnd, 42)
 
-    for i in 0..<160 do block[i] = FLAG_BOMB
+    for i in 0..<160 do block[i] = ITEM_BOMB
 
     rand.shuffle(block[:], &rnd)
 
     for x in 0..<BLOCK_WIDTH {
         for y in 0..<BLOCK_WIDTH {
             check :: proc(count: ^int, x,y: int) {
-                if in_range(x,y) && block[get_index(x,y)] == FLAG_BOMB {
+                if in_range(x,y) && block[get_index(x,y)] == ITEM_BOMB {
                     count ^= count^ + 1
                 }
             }
             x, y :int= auto_cast x, auto_cast y
-            if block[get_index(x,y)] == FLAG_BOMB do continue
+            if block[get_index(x,y)] == ITEM_BOMB do continue
             count : int
             check(&count, x-1, y-1)
             check(&count, x, y-1)
@@ -94,14 +98,15 @@ main :: proc() {
 
         hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
         hover_cell :[2]int= {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
-        if rl.IsMouseButtonReleased(.LEFT) {
+        if !dead && rl.IsMouseButtonReleased(.LEFT) {
             if in_range(hover_cell.x, hover_cell.y) {
                 // ** sweep
-                idx := get_index(hover_cell.x, hover_cell.y)
-                if mask[idx] == 0 {
-                    mask[idx] = 1
-                }
+                sweep(hover_cell.x, hover_cell.y)
             }
+        }
+        if dead && rl.IsKeyPressed(.R) {
+            for i in 0..<len(mask) do mask[i] = 0
+            dead = false
         }
 
         zoom_speed_max, zoom_speed_min :f32= 1.2, 0.2
@@ -126,7 +131,7 @@ main :: proc() {
                     rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
                     rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
                 } else {
-                    if v == FLAG_BOMB {
+                    if v == ITEM_BOMB {
                         rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
                         rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,60,255})
                         rl.DrawCircleV(pos+{0.4,0.4}, 0.3, {200, 70, 40, 255})
@@ -144,6 +149,8 @@ main :: proc() {
 
         rl.DrawRectangleV({cast(f32)hover_cell.x, cast(f32)hover_cell.y}, {0.9, 0.9}, {255,255,255, 80})
 
+        if dead do rl.DrawRectangleV({0,0}, {cast(f32)BLOCK_WIDTH, cast(f32)BLOCK_WIDTH}, {255,60,60, 80})
+
         rl.DrawLine(-100, 0, 100, 0, rl.Color{255,255,0, 255})
         rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
 
@@ -160,5 +167,29 @@ main :: proc() {
     rl.CloseWindow()
 }
 
-sweep :: proc(x,y: int) {
+sweep :: proc(x,y : int, peek:= false) {
+    idx := get_index(x,y)
+    m := mask[idx]
+    v := block[idx]
+    if m == 0 {
+        mask[idx] = 1
+        if v == 0 {
+            _sweep :: proc(x,y: int) {
+                if in_range(x,y) {
+                    sweep(x,y, true)
+                }
+            }
+            _sweep(x-1,y-1)
+            _sweep(x,y-1)
+            _sweep(x+1,y-1)
+            _sweep(x-1,y)
+            // _sweep(x,y)
+            _sweep(x+1,y)
+            _sweep(x-1,y+1)
+            _sweep(x,y+1)
+            _sweep(x+1,y+1)
+        } else if v == ITEM_BOMB {
+            dead = true
+        }
+    }
 }
