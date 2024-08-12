@@ -93,27 +93,28 @@ main :: proc() {
 		hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 		hover_cell :[2]int= {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
 
-		if rl.IsMouseButtonPressed(.RIGHT) {
+		dragged_distance := linalg.distance(mouse_position_drag_start, rl.GetMousePosition())
+
+		if rl.IsMouseButtonPressed(.MIDDLE) {
 			last_position = rl.GetMousePosition()
 			mouse_position_drag_start = last_position
 		}
-		if rl.IsMouseButtonDown(.RIGHT) {
+		if rl.IsMouseButtonDown(.MIDDLE) {
 			last := rl.GetScreenToWorld2D(last_position, camera)
 			now := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 			camera.target += last-now
-		} else if rl.IsMouseButtonReleased(.RIGHT) {
-			dragged_distance := linalg.distance(mouse_position_drag_start, rl.GetMousePosition())
-			if dragged_distance < 4 {
-				mark_toggle(hover_cell.x, hover_cell.y)
-			}
-		}
+		} 
 
+		if rl.IsMouseButtonReleased(.RIGHT) {
+			mark_toggle(hover_cell.x, hover_cell.y)
+		}
 		if !dead && rl.IsMouseButtonReleased(.LEFT) {
 			if in_range(hover_cell.x, hover_cell.y) {
 				// ** sweep
 				sweep(hover_cell.x, hover_cell.y)
 			}
 		}
+
 		if dead && rl.IsKeyPressed(.R) {
 			for i in 0..<len(mask) do mask[i] = 0
 			dead = false
