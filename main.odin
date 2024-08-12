@@ -4,6 +4,7 @@ import "core:fmt"
 import "core:strconv"
 import "core:slice"
 import "core:math/rand"
+import "core:math/linalg"
 import "core:math"
 import "core:strings"
 import rl "vendor:raylib"
@@ -21,6 +22,7 @@ rnd : rand.Rand
 ITEM_BOMB :u32= 0xff
 
 FLAG_MARKED :u32= 0xef
+FLAG_TOUCHED :u32= 1
 
 get_index :: proc(x,y: int) -> int {
 	return x+y*(auto_cast BLOCK_WIDTH)
@@ -71,6 +73,7 @@ main :: proc() {
 	}
 
 	last_position : rl.Vector2
+	mouse_position_drag_start : rl.Vector2
 
 	for !rl.WindowShouldClose() {
 		camera.offset = rl.Vector2{ cast(f32)rl.GetScreenWidth()*0.5, cast(f32)rl.GetScreenHeight()*0.5 }
@@ -87,17 +90,24 @@ main :: proc() {
 			camera.target.y += speed
 		}
 
+		hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
+		hover_cell :[2]int= {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
+
 		if rl.IsMouseButtonPressed(.RIGHT) {
 			last_position = rl.GetMousePosition()
+			mouse_position_drag_start = last_position
 		}
 		if rl.IsMouseButtonDown(.RIGHT) {
 			last := rl.GetScreenToWorld2D(last_position, camera)
 			now := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 			camera.target += last-now
+		} else if rl.IsMouseButtonReleased(.RIGHT) {
+			dragged_distance := linalg.distance(mouse_position_drag_start, rl.GetMousePosition())
+			if dragged_distance < 4 {
+				mark_toggle(hover_cell.x, hover_cell.y)
+			}
 		}
 
-		hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
-		hover_cell :[2]int= {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
 		if !dead && rl.IsMouseButtonReleased(.LEFT) {
 			if in_range(hover_cell.x, hover_cell.y) {
 				// ** sweep
@@ -130,7 +140,10 @@ main :: proc() {
 				if m == 0 {
 					rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
 					rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
-				} else {
+				} else if m == FLAG_MARKED {
+					rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,100})
+					rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,100})
+				} else if m == FLAG_TOUCHED {
 					if v == ITEM_BOMB {
 						rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
 						rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,60,255})
@@ -163,6 +176,9 @@ main :: proc() {
 
 		rl.EndDrawing()
 
+		// _draw_flag :: proc(root: rl.Vector2, height: f32, color: rl.Color) {
+		// 	rl.DrawTriangle(, color)
+		// }
 	}
 	rl.CloseWindow()
 }
@@ -172,7 +188,7 @@ sweep :: proc(x,y : int, peek:= false) {
 	m := mask[idx]
 	v := block[idx]
 	if m == 0 {
-		mask[idx] = 1
+		mask[idx] = FLAG_TOUCHED
 		if v == 0 {
 			_sweep :: proc(x,y: int) {
 				if in_range(x,y) {
@@ -191,5 +207,14 @@ sweep :: proc(x,y : int, peek:= false) {
 		} else if v == ITEM_BOMB {
 			dead = true
 		}
+	}
+}
+
+mark_toggle :: proc(x,y : int) {
+	idx := get_index(x,y)
+	if mask[idx] == 0 {
+		mask[idx] = FLAG_MARKED
+	} else if mask[idx] == FLAG_MARKED {
+		mask[idx] = 0
 	}
 }
