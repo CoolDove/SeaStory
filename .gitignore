@@ -1,2 +1,4 @@
 ols.json
 *.exe
+*.pdb
+*.rdi
