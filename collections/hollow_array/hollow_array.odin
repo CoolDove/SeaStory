@@ -83,10 +83,6 @@ hla_remove_handle :: proc(using handle: HollowArrayHandle($T)) {
 	}
 }
 
-hla_get :: proc {
-	hla_get_value,
-	hla_get_pointer,
-}
 hla_get_value :: proc(using handle: HollowArrayHandle($T)) -> (T, bool) #optional_ok {
 	if hollow_array == nil do return {}, false
 	using hollow_array
@@ -120,27 +116,54 @@ hla_ite :: proc(using hla: ^HollowArray($T), using iterator: ^HollowArrayIterato
 	return nil, false
 }
 
-ite_alive_ptr :: proc(using hla: ^HollowArray($T), index: ^int) -> (^T, bool) {
+ite_alive_value :: proc(using hla: ^HollowArray($T), index: ^int) -> (^HollowArrayValue(T), bool) {
 	if count == 0 {
 		index^ = 0
-		return nil, false
+		return {}, false
 	}
 	if index^ >= len(hla.buffer) { 
 		index^ = 0
-		return nil, false 
+		return {}, false 
 	}
 	for ; index^ < len(hla.buffer) && hla.buffer[index^].id >= 0; index^ = index^ + 1 {
 		v := &hla.buffer[index^]
 		if v.id < 0 do continue
 		index^ = index^ + 1
-		return &v.value, true
+		return v, true
 	}
 	index^ = 0
+	return {}, false
+}
+ite_alive_ptr :: proc(using hla: ^HollowArray($T), index: ^int) -> (^T, bool) {
+	res, ok := ite_alive_value(hla, index)
+	if ok {
+		return &res.value, true
+	}
 	return nil, false
+}
+ite_alive_handle :: proc(using hla: ^HollowArray($T), index: ^int) -> (HollowArrayHandle(T), bool) {
+	res, ok := ite_alive_value(hla, index)
+	if ok {
+		return {
+			hla,
+			index^-1,
+			res.id
+		}, true
+	}
+	return {}, false
+}
+
+ites_alive_value :: proc(using hla: ^HollowArray($T)) -> (^HollowArrayValue(T), bool) {
+	return ite_alive_value(hla, &hla.__ite)
 }
 ites_alive_ptr :: proc(using hla: ^HollowArray($T)) -> (^T, bool) {
 	return ite_alive_ptr(hla, &hla.__ite)
 }
+ites_alive_handle :: proc(using hla: ^HollowArray($T)) -> (HollowArrayHandle(T), bool) {
+	return ite_alive_handle(hla, &hla.__ite)
+}
+
+
 HollowArrayIterator :: struct {
 	next_buffer_idx, next_alive_idx : int,
 	buffer_idx, alive_idx : int,

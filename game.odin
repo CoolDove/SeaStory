@@ -18,7 +18,7 @@ Game :: struct {
 	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]f32,
 	dead : bool,
 	towers : hla.HollowArray(Tower),
-	birds : [dynamic]^Bird,
+	birds : hla.HollowArray(Bird),
 
 	land : [dynamic][2]int,
 
@@ -50,20 +50,22 @@ game_add_tower :: proc(g: ^Game, p: Position) -> bool {
 	for t in hla.hla_ite(&g.towers, &ite) {
 		if t.pos == p do return false
 	}
-	// tower := new(Tower)
-	// tower.pos = p
-	hla_append(&g.towers, Tower{pos=p})
-	// append(&g.towers, tower)
+	hla_append(&g.towers, Tower{pos=p, range=4, shoot_interval=1})
 	return true
 }
 
-game_add_birds :: proc(g: ^Game, p: rl.Vector2) {
-	b := new(Bird)
-	b.pos = p
-	b.hitpoint = 100
-	b.shoot_interval = 1.0
-	append(&g.birds, b)
+game_add_bird :: proc(g: ^Game, p: rl.Vector2) {
+	hla.hla_append(&g.birds, Bird{
+		pos = p,
+		hitpoint = 100,
+		shoot_interval = 1.0,
+	})
 }
+
+game_kill_bird :: proc(g: ^Game, b: hla.HollowArrayHandle(Bird)) {
+	hla.hla_remove_handle(b)
+}
+
 
 sweep :: proc(using g: ^Game, x,y : int, peek:= false) {
 	idx := get_index(x,y)
@@ -163,11 +165,10 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	// bird gen
 	birdgen_update(g, &g.birdgen, 1.0/64.0)
 
-	for &b in g.birds {
+	for b in hla.ites_alive_ptr(&g.birds) {
 		bird_update(b, g, delta)
 	}
-	tower_ite : hla.HollowArrayIterator
-	for t in hla.hla_ite(&g.towers, &tower_ite) {
+	for t in hla.ites_alive_ptr(&g.towers) {
 		tower_update(t, g, delta)
 	}
 
@@ -215,16 +216,14 @@ game_draw :: proc(using g: ^Game) {
 
 	rl.DrawRectangleV({cast(f32)hover_cell.x, cast(f32)hover_cell.y}, {0.9, 0.9}, {255,255,255, 80})
 
-	for bird in birds {
+	for bird in hla.ites_alive_ptr(&g.birds) {
 		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {cast(f32)bird.pos.x,cast(f32)bird.pos.y, 1, 1}, {0,0}, 0, rl.WHITE)
 		// if bird.dest_time > 0 do rl.DrawLineV(bird.pos, bird.destination, rl.RED)
 	}
 
 	draw_towers := make([dynamic]^Tower)
+	for t in hla.ites_alive_ptr(&g.towers) { append(&draw_towers, t) }
 
-	for t in hla.ites_alive_ptr(&g.towers) {
-		append(&draw_towers, t)
-	}
 	slice.sort_by_cmp(draw_towers[:], proc(a, b: ^Tower) -> slice.Ordering {
 		if a.pos.y > b.pos.y do return .Greater
 		else if a.pos.y < b.pos.y do return .Less
@@ -232,7 +231,13 @@ game_draw :: proc(using g: ^Game) {
 	})
 
 	for tower in draw_towers {
+		center :rl.Vector2= {cast(f32)tower.pos.x + 0.5, cast(f32)tower.pos.y + 0.5}
+		rl.DrawCircleLinesV(center, auto_cast tower.range, rl.RED)
 		draw_building(g, tower.pos.x, tower.pos.y, res.tower_tex)
+		if target, ok := hla.hla_get_pointer(tower.target); ok {
+			thickness :f32= auto_cast ((0.3-0.1)*(tower.shoot_charge/tower.shoot_interval)+0.1)
+			rl.DrawLineEx(center, target.pos+{0.5,0.5}, thickness, {200, 100, 20, 64})
+		}
 	}
 
 	draw_ui(g)

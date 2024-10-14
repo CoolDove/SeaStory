@@ -30,7 +30,7 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 		if pos, ok := find_empty_cell(g, from, &buffer); ok {
 			x := cast(f32)pos.x
 			y := cast(f32)pos.y
-			game_add_birds(g, {x,y})
+			game_add_bird(g, {x,y})
 		}
 		bg.time = 0
 	}
