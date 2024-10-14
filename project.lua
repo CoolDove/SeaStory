@@ -1,6 +1,7 @@
 local M={}
 
 function M._begin()
+	vim.cmd("colorscheme zellner")
 	print("Project minesweeper begin")
 	vim.opt.expandtab = false
 	dove.toggle.register_quick_command("Build", function ()

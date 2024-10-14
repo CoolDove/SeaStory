@@ -1,5 +1,6 @@
 package main
 
+import "base:runtime"
 import "core:fmt"
 import "core:strconv"
 import "core:slice"
@@ -16,8 +17,6 @@ block : [BLOCK_WIDTH*BLOCK_WIDTH]u32
 mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32
 
 dead : bool
-
-rnd : rand.Rand
 
 ITEM_BOMB :u32= 0xff
 
@@ -41,11 +40,11 @@ main :: proc() {
 
 	camera.zoom = 20
 
-	rand.init(&rnd, 42)
+	rand.reset(42)
 
 	for i in 0..<160 do block[i] = ITEM_BOMB
 
-	rand.shuffle(block[:], &rnd)
+	rand.shuffle(block[:])
 
 	for x in 0..<BLOCK_WIDTH {
 		for y in 0..<BLOCK_WIDTH {
@@ -115,6 +114,13 @@ main :: proc() {
 			}
 		}
 
+		_is_double_button :: proc(btn, btp: rl.MouseButton) -> bool {
+			return rl.IsMouseButtonPressed(btn) && rl.IsMouseButtonDown(btp)
+		}
+		if _is_double_button(.LEFT,.RIGHT) || _is_double_button(.RIGHT,.LEFT) {
+
+		}
+
 		if dead && rl.IsKeyPressed(.R) {
 			for i in 0..<len(mask) do mask[i] = 0
 			dead = false
@@ -129,35 +135,20 @@ main :: proc() {
 		last_position = rl.GetMousePosition()
 
 		rl.BeginDrawing()
-		rl.ClearBackground(rl.Color{0,0,0,0})
+		rl.ClearBackground(rl.Color{78,180,166,0})
 
 		rl.BeginMode2D(camera)
 
+		// draw grid
+		grid_color := rl.Color{68,160,156,128}
+		for i in 0..=BLOCK_WIDTH {
+			rl.DrawLineEx({auto_cast i, 0}, {auto_cast i, auto_cast BLOCK_WIDTH}, 0.1, grid_color)
+			rl.DrawLineEx({0, auto_cast i}, {auto_cast BLOCK_WIDTH, auto_cast i}, 0.1, grid_color)
+		}
+
 		for x in 0..<BLOCK_WIDTH {
 			for y in 0..<BLOCK_WIDTH {
-				idx := get_index(cast(int)x,cast(int)y)
-				v,m := block[idx], mask[idx]
-				pos :rl.Vector2= {cast(f32)x,cast(f32)y}
-				if m == 0 {
-					rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
-					rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
-				} else if m == FLAG_MARKED {
-					rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,100})
-					rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,100})
-				} else if m == FLAG_TOUCHED {
-					if v == ITEM_BOMB {
-						rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
-						rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,60,255})
-						rl.DrawCircleV(pos+{0.4,0.4}, 0.3, {200, 70, 40, 255})
-					} else {
-						rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
-						rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,80,255})
-						if v != 0 {
-							rl.DrawTextEx(rl.GetFontDefault(), fmt.ctprintf("{}", v),
-								pos+{0.2, 0.1}, 0.8, 1, rl.Color{80, 120, 90, 255})
-						}
-					}
-				}
+				draw_cell(auto_cast x, auto_cast y)
 			}
 		}
 
@@ -176,12 +167,46 @@ main :: proc() {
 		rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
 
 		rl.EndDrawing()
-
-		// _draw_flag :: proc(root: rl.Vector2, height: f32, color: rl.Color) {
-		// 	rl.DrawTriangle(, color)
-		// }
 	}
 	rl.CloseWindow()
+}
+
+draw_cell :: proc(x,y : int) {
+	idx := get_index(x,y)
+	v,m := block[idx], mask[idx]
+	pos :rl.Vector2= {cast(f32)x,cast(f32)y}
+	if m == 0 {
+		// rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
+		// rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
+	} else if m == FLAG_MARKED {
+		// rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
+		// rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
+		// draw flag
+		triangle := [3]rl.Vector2{ {0,0}, {0,0.4}, {0.4,0.2} }
+		offset := rl.Vector2{0.3, 0.1}
+		for &p in triangle do p += offset + pos
+
+		// shadow
+		soffset := rl.Vector2{0.03,0.03}
+		rl.DrawTriangle(triangle[0]+soffset, triangle[1]+soffset, triangle[2]+soffset, {0,0,0,100})
+		rl.DrawRectangleV(pos+offset+soffset, {0.08, 0.7}, {0,0,0,100})
+
+		rl.DrawTriangle(triangle[0], triangle[1], triangle[2], {230,20,10,255})
+		rl.DrawRectangleV(pos+offset, {0.08, 0.7}, {60,50,20, 255})
+	} else if m == FLAG_TOUCHED {
+		if v == ITEM_BOMB {
+			rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
+			rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,60,255})
+			rl.DrawCircleV(pos+{0.4,0.4}, 0.3, {200, 70, 40, 255})
+		} else {
+			rl.DrawRectangleV(pos, {1,1}, {217, 160, 102, 255})
+			// rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,30,255})
+			if v != 0 {
+				rl.DrawTextEx(rl.GetFontDefault(), fmt.ctprintf("{}", v),
+					pos+{0.2, 0.1}, 0.8, 1, rl.Color{200, 140, 85, 200})
+			}
+		}
+	}
 }
 
 sweep :: proc(x,y : int, peek:= false) {
@@ -219,3 +244,9 @@ mark_toggle :: proc(x,y : int) {
 		mask[idx] = 0
 	}
 }
+
+
+CellInfo :: struct {
+	block, mask : u32
+}
+GameBlock :: #soa [BLOCK_WIDTH*BLOCK_WIDTH]CellInfo
