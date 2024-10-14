@@ -111,7 +111,7 @@ game_init :: proc(using g: ^Game) {
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 
-	birdgen.interval = 3.0
+	birdgen.interval = 0.2
 }
 
 game_update :: proc(using g: ^Game, delta: f64) {
@@ -152,10 +152,10 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	}
 
-	if dead && rl.IsKeyPressed(.R) {
-		for i in 0..<len(game.mask) do game.mask[i] = 0
-		dead = false
-	}
+	// if dead && rl.IsKeyPressed(.R) {
+	// 	for i in 0..<len(game.mask) do game.mask[i] = 0
+	// 	dead = false
+	// }
 
 	zoom_speed_max, zoom_speed_min :f32= 1.2, 0.2
 	zoom_max, zoom_min :f32= 42, 18
@@ -220,7 +220,7 @@ game_draw :: proc(using g: ^Game) {
 
 	for bird in birds {
 		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {cast(f32)bird.pos.x,cast(f32)bird.pos.y, 1, 1}, {0,0}, 0, rl.WHITE)
-		if bird.dest_time > 0 do rl.DrawLineV(bird.pos, bird.destination, rl.RED)
+		// if bird.dest_time > 0 do rl.DrawLineV(bird.pos, bird.destination, rl.RED)
 	}
 
 	for tower in towers {

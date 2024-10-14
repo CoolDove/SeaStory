@@ -23,6 +23,12 @@ FLAG_TOUCHED :u32= 1
 
 game : Game
 
+
+// types
+Vec2 :: rl.Vector2
+Vec2i :: [2]int
+
+
 get_index :: proc(x,y: int) -> int {
 	return x+y*(auto_cast BLOCK_WIDTH)
 }
