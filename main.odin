@@ -5,6 +5,7 @@ import "core:fmt"
 import "core:strconv"
 import "core:slice"
 import "core:math/rand"
+import "core:math/noise"
 import "core:math/linalg"
 import "core:math"
 import "core:strings"
@@ -19,6 +20,7 @@ mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32
 dead : bool
 
 ITEM_BOMB :u32= 0xff
+ITEM_QUESTION :u32= 0xfe
 
 FLAG_MARKED :u32= 0xef
 FLAG_TOUCHED :u32= 1
@@ -31,6 +33,8 @@ in_range :: proc(x,y: int) -> bool {
 	w :int= cast(int)BLOCK_WIDTH
 	return !(x < 0 || y < 0 || x >= w || y >= w)
 }
+
+time : f64
 
 main :: proc() {
 	rl.SetConfigFlags({rl.ConfigFlag.WINDOW_RESIZABLE})
@@ -68,6 +72,9 @@ main :: proc() {
 			check(&count, x, y+1)
 			check(&count, x+1, y+1)
 			block[get_index(x,y)] = cast(u32)count
+			if count > 0 && rand.float32() < 0.2 {
+				block[get_index(x,y)] = ITEM_QUESTION
+			}
 		}
 	}
 
@@ -148,6 +155,29 @@ main :: proc() {
 
 		for x in 0..<BLOCK_WIDTH {
 			for y in 0..<BLOCK_WIDTH {
+				pos := rl.Vector2{cast(f32)x,cast(f32)y}
+				n := noise.noise_2d(42, noise.Vec2{cast(f64)x,cast(f64)y}+0.6*{time, time})
+				m := mask[get_index(cast(int)x,cast(int)y)]
+				if m == FLAG_TOUCHED {
+					points : [4]rl.Vector2
+					points[0] = pos + {0.1, 0.1}
+					points[1] = pos + {1.1, 0.1}
+					points[2] = pos + {1.1, 1.1}
+					points[3] = pos + {0.1, 1.1}
+					for i in 0..<4 {
+						p := points[i]
+						points[i] = p + 0.04 * noise.noise_2d(42, noise.Vec2{cast(f64)p.x,cast(f64)p.y}+0.6*{time, time})
+					}
+					// tria := [3]rl.Vector2{ points[0], points[1], points[2] }
+					// trib := [3]rl.Vector2{ points[0], points[2], points[3] }
+					rl.DrawTriangle( points[0], points[2], points[1] , {0,0,0, 64})
+					rl.DrawTriangle( points[0], points[3], points[2] , {0,0,0, 64})
+				}
+			}
+		}
+
+		for x in 0..<BLOCK_WIDTH {
+			for y in 0..<BLOCK_WIDTH {
 				draw_cell(auto_cast x, auto_cast y)
 			}
 		}
@@ -167,6 +197,8 @@ main :: proc() {
 		rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
 
 		rl.EndDrawing()
+
+		time += 1.0/60.0
 	}
 	rl.CloseWindow()
 }
@@ -198,9 +230,14 @@ draw_cell :: proc(x,y : int) {
 			rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
 			rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,60,255})
 			rl.DrawCircleV(pos+{0.4,0.4}, 0.3, {200, 70, 40, 255})
+		} else if v == ITEM_QUESTION {
+			rl.DrawRectangleV(pos, {1,1}, {217, 160, 102, 255})
+			if v != 0 {
+				rl.DrawTextEx(rl.GetFontDefault(), "?",
+					pos+{0.2, 0.1}, 0.8, 1, rl.Color{200, 190, 40, 200})
+			}
 		} else {
 			rl.DrawRectangleV(pos, {1,1}, {217, 160, 102, 255})
-			// rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,30,255})
 			if v != 0 {
 				rl.DrawTextEx(rl.GetFontDefault(), fmt.ctprintf("{}", v),
 					pos+{0.2, 0.1}, 0.8, 1, rl.Color{200, 140, 85, 200})
