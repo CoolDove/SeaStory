@@ -9,6 +9,7 @@ import "core:math/noise"
 import "core:math/linalg"
 import "core:math"
 import "core:strings"
+import hla "collections/hollow_array"
 import rl "vendor:raylib"
 
 Game :: struct {
@@ -16,7 +17,7 @@ Game :: struct {
 	mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
 	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]f32,
 	dead : bool,
-	towers : [dynamic]^Tower,
+	towers : hla.HollowArray(Tower),
 	birds : [dynamic]^Bird,
 
 	land : [dynamic][2]int,
@@ -39,22 +40,20 @@ GameResources :: struct {
 	bird_tex : rl.Texture
 }
 
-Tower :: struct {
-	pos : Position,
-	level : int,
-}
-
 Position :: struct {
 	x, y : int,
 }
 
 game_add_tower :: proc(g: ^Game, p: Position) -> bool {
-	for t in g.towers {
+	using hla
+	ite : hla.HollowArrayIterator
+	for t in hla.hla_ite(&g.towers, &ite) {
 		if t.pos == p do return false
 	}
-	tower := new(Tower)
-	tower.pos = p
-	append(&g.towers, tower)
+	// tower := new(Tower)
+	// tower.pos = p
+	hla_append(&g.towers, Tower{pos=p})
+	// append(&g.towers, tower)
 	return true
 }
 
@@ -111,6 +110,7 @@ game_init :: proc(using g: ^Game) {
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 
+	towers = hla.hla_make(Tower, 32)
 	birdgen.interval = 3.0
 }
 
@@ -152,11 +152,6 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	}
 
-	// if dead && rl.IsKeyPressed(.R) {
-	// 	for i in 0..<len(game.mask) do game.mask[i] = 0
-	// 	dead = false
-	// }
-
 	zoom_speed_max, zoom_speed_min :f32= 1.2, 0.2
 	zoom_max, zoom_min :f32= 42, 18
 	zoom_speed :f32= ((camera.zoom-zoom_min)/(zoom_max-zoom_min)) * ( zoom_speed_max-zoom_speed_min ) + zoom_speed_min
@@ -171,7 +166,9 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	for &b in g.birds {
 		bird_update(b, g, delta)
 	}
-	for t in g.towers {
+	tower_ite : hla.HollowArrayIterator
+	for t in hla.hla_ite(&g.towers, &tower_ite) {
+		tower_update(t, g, delta)
 	}
 
 	g.time += delta
@@ -223,8 +220,12 @@ game_draw :: proc(using g: ^Game) {
 		// if bird.dest_time > 0 do rl.DrawLineV(bird.pos, bird.destination, rl.RED)
 	}
 
-	draw_towers := slice.clone(towers[:]); defer delete(draw_towers)
-	slice.sort_by_cmp(draw_towers, proc(a, b: ^Tower) -> slice.Ordering {
+	draw_towers := make([dynamic]^Tower)
+
+	for t in hla.ites_alive_ptr(&g.towers) {
+		append(&draw_towers, t)
+	}
+	slice.sort_by_cmp(draw_towers[:], proc(a, b: ^Tower) -> slice.Ordering {
 		if a.pos.y > b.pos.y do return .Greater
 		else if a.pos.y < b.pos.y do return .Less
 		else do return .Equal

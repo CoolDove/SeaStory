@@ -69,7 +69,7 @@ bird_update :: proc(b: ^Bird, g: ^Game, delta: f64) {
 		x := g.land[i].x
 		y := g.land[i].y
 		b.target = g.land[i]
-		b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y + rand.float32()*0.1}
+		b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y}
 		b.dest_time = g.time
 	}
 	if b.dest_time != 0 {
