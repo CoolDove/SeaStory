@@ -113,7 +113,7 @@ game_init :: proc(using g: ^Game) {
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 
 	towers = hla.hla_make(Tower, 32)
-	birdgen.interval = 3.0
+	birdgen.interval = 0.5
 }
 
 game_update :: proc(using g: ^Game, delta: f64) {
@@ -218,7 +218,6 @@ game_draw :: proc(using g: ^Game) {
 
 	for bird in hla.ites_alive_ptr(&g.birds) {
 		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {cast(f32)bird.pos.x,cast(f32)bird.pos.y, 1, 1}, {0,0}, 0, rl.WHITE)
-		// if bird.dest_time > 0 do rl.DrawLineV(bird.pos, bird.destination, rl.RED)
 	}
 
 	draw_towers := make([dynamic]^Tower)

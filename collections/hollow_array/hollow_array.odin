@@ -125,7 +125,7 @@ ite_alive_value :: proc(using hla: ^HollowArray($T), index: ^int) -> (^HollowArr
 		index^ = 0
 		return {}, false 
 	}
-	for ; index^ < len(hla.buffer) && hla.buffer[index^].id >= 0; index^ = index^ + 1 {
+	for ; index^ < len(hla.buffer); index^ = index^ + 1 {
 		v := &hla.buffer[index^]
 		if v.id < 0 do continue
 		index^ = index^ + 1

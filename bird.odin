@@ -76,7 +76,6 @@ bird_update :: proc(b: ^Bird, g: ^Game, delta: f64) {
 		dir := linalg.normalize(b.destination - b.pos)
 		step := 2*auto_cast delta
 		if auto_cast linalg.distance(b.destination, b.pos) < step {
-			// fmt.printf("i'm attacking...\n")
 			target :Vec2i= {auto_cast b.destination.x, auto_cast b.destination.y}
 			idx := get_index(target.x, target.y)
 			if g.hitpoint[idx] > 0.0 {
