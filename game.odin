@@ -17,14 +17,17 @@ Game :: struct {
 	mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
 	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]f32,
 	dead : bool,
-	towers : hla.HollowArray(Tower),
+	// towers : hla.HollowArray(Tower),
+	buildings : hla.HollowArray(^Building),
 	birds : hla.HollowArray(Bird),
 
 	land : [dynamic][2]int,
-
 	birdgen : BirdGenerator,
 
 	time : f64,
+
+	// gameplay resources
+	mineral : int,
 
 	res : GameResources,
 	using operation : GameOperation,
@@ -44,15 +47,15 @@ Position :: struct {
 	x, y : int,
 }
 
-game_add_tower :: proc(g: ^Game, p: Position) -> bool {
-	using hla
-	ite : hla.HollowArrayIterator
-	for t in hla.hla_ite(&g.towers, &ite) {
-		if t.pos == p do return false
-	}
-	hla_append(&g.towers, Tower{pos=p, range=4, shoot_interval=0.25})
-	return true
-}
+// game_add_tower :: proc(g: ^Game, p: Position) -> bool {
+// 	using hla
+// 	ite : hla.HollowArrayIterator
+// 	for t in hla.hla_ite(&g.towers, &ite) {
+// 		if t.pos == p do return false
+// 	}
+// 	hla_append(&g.towers, Tower{pos=p, range=4, shoot_interval=0.25})
+// 	return true
+// }
 
 game_add_bird :: proc(g: ^Game, p: rl.Vector2) {
 	hla.hla_append(&g.birds, Bird{
@@ -112,8 +115,12 @@ game_init :: proc(using g: ^Game) {
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 
-	towers = hla.hla_make(Tower, 32)
+	buildings = hla.hla_make(^Building, 32)
 	birdgen.interval = 0.5
+}
+
+game_release :: proc(using g: ^Game) {
+	hla.hla_delete(&g.buildings)
 }
 
 game_update :: proc(using g: ^Game, delta: f64) {
@@ -137,7 +144,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	if rl.IsMouseButtonReleased(.RIGHT) {
 		mark_toggle(&game, hover_cell.x, hover_cell.y)
 		if mask[get_index(hover_cell.x, hover_cell.y)] != FLAG_TOUCHED {
-			game_add_tower(g, {hover_cell.x, hover_cell.y})
+			hla.hla_append(&g.buildings, tower_new(hover_cell))
+			fmt.printf("add tower\n")
 		}
 	}
 	if !dead && rl.IsMouseButtonReleased(.LEFT) {
@@ -165,11 +173,13 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	// bird gen
 	birdgen_update(g, &g.birdgen, 1.0/64.0)
 
+	for building_handle in hla.ites_alive_handle(&game.buildings) {
+		building := hla.hla_get_pointer(building_handle)^
+		building.update(transmute(hla._HollowArrayHandle)building_handle, delta)
+	}
+
 	for bird_handle in hla.ites_alive_handle(&g.birds) {
 		bird_update(bird_handle, g, delta)
-	}
-	for t in hla.ites_alive_ptr(&g.towers) {
-		tower_update(t, g, delta)
 	}
 
 	g.time += delta
@@ -223,33 +233,53 @@ game_draw :: proc(using g: ^Game) {
 		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
 	}
 
-	draw_towers := make([dynamic]^Tower)
-	for t in hla.ites_alive_ptr(&g.towers) { append(&draw_towers, t) }
+	draw_elems := make([dynamic]DrawElem); defer delete(draw_elems)
 
-	slice.sort_by_cmp(draw_towers[:], proc(a, b: ^Tower) -> slice.Ordering {
-		if a.pos.y > b.pos.y do return .Greater
-		else if a.pos.y < b.pos.y do return .Less
-		else do return .Equal
-	})
-
-	for tower in draw_towers {
-		center :rl.Vector2= {cast(f32)tower.pos.x + 0.5, cast(f32)tower.pos.y + 0.5}
-		rl.DrawCircleLinesV(center, auto_cast tower.range, {255, 100, 100, 128})
-		draw_building(g, tower.pos.x, tower.pos.y, res.tower_tex)
-		if target, ok := hla.hla_get_pointer(tower.target); ok {
-			thickness :f32= auto_cast ((0.3-0.1)*(tower.shoot_charge/tower.shoot_interval)+0.1)
-			rl.DrawLineEx(center, target.pos+{0.5,0.5}, thickness, {80, 100, 160, 128})
-			rl.DrawLineEx(center, target.pos+{0.5,0.5}, thickness*0.4, {200, 230, 220, 255})
+	for building_handle in hla.ites_alive_handle(&game.buildings) {
+		handle := new(hla._HollowArrayHandle)
+		handle^ = transmute(hla._HollowArrayHandle)building_handle
+		if building, ok := hla.hla_get_value(building_handle); ok {
+			append(&draw_elems, DrawElem{
+				handle,
+				auto_cast building.position.y,
+				proc(handle: rawptr) {
+					using hla
+					handleptr := cast(^HollowArrayHandle(^Building))handle
+					building := hla_get_value(handleptr^)
+					if building, ok := hla_get_value(handleptr^); ok {
+						building.draw(transmute(hla._HollowArrayHandle)handleptr^)
+					}
+				},
+				proc(handle: rawptr) {
+					using hla
+					handleptr := cast(^HollowArrayHandle(^Building))handle
+					if building, ok := hla_get_value(handleptr^); ok {
+						building.extra_draw(transmute(hla._HollowArrayHandle)handleptr^)
+					}
+				},
+				proc(handle: rawptr) {
+					using hla
+					handleptr := cast(^hla._HollowArrayHandle)handle
+					free(handleptr)
+				}
+			})
 		}
 	}
 
-	draw_ui(g)
+	slice.sort_by_cmp(draw_elems[:], proc(a, b: DrawElem) -> slice.Ordering {
+		if a.order > b.order do return .Greater
+		else if a.order < b.order do return .Less
+		else do return .Equal
+	})
 
-	// building is always a 32*n picture
-	draw_building :: proc(using g: ^Game, x,y: int, tex: rl.Texture) {
-		height := cast(f32) tex.height
-		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)x,cast(f32)y, 1, height/32.0}, {0,1}, 0, rl.WHITE)
+	for e in draw_elems {
+		e.draw(e.data)
 	}
+	for e in draw_elems {
+		e.extra_draw(e.data)
+	}
+
+	draw_ui(g)
 
 	draw_cell :: proc(using g: ^Game, x,y: int) {
 		idx := get_index(x,y)
@@ -296,5 +326,12 @@ game_draw :: proc(using g: ^Game) {
 }
 
 draw_ui :: proc(g: ^Game) {
+}
 
+DrawElem :: struct {
+	data : rawptr,
+	order : f64,
+	draw : proc(data: rawptr),
+	extra_draw : proc(data: rawptr),
+	free : proc(data: rawptr)
 }

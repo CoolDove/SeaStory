@@ -18,6 +18,12 @@ HollowArrayHandle :: struct($T:typeid) {
 	id : int,
 }
 
+_HollowArrayHandle :: struct {
+	hollow_array: rawptr,
+	index : int,
+	id : int,
+}
+
 hla_make :: proc($T: typeid, capacity:= 0, allocator:= context.allocator) -> HollowArray(T) {
 	context.allocator = allocator
 	hla : HollowArray(T)
@@ -88,7 +94,7 @@ hla_get_value :: proc(using handle: HollowArrayHandle($T)) -> (T, bool) #optiona
 	using hollow_array
 	v := buffer[index]
 	if v.id != id do return {}, false
-	return v, true
+	return v.value, true
 }
 hla_get_pointer :: proc(using handle: HollowArrayHandle($T)) -> (^T, bool) #optional_ok {
 	if hollow_array == nil do return nil, false
@@ -116,7 +122,7 @@ hla_ite :: proc(using hla: ^HollowArray($T), using iterator: ^HollowArrayIterato
 	return nil, false
 }
 
-ite_alive_value :: proc(using hla: ^HollowArray($T), index: ^int) -> (^HollowArrayValue(T), bool) {
+ite_alive_hvalue :: proc(using hla: ^HollowArray($T), index: ^int) -> (^HollowArrayValue(T), bool) {
 	if count == 0 {
 		index^ = 0
 		return {}, false
@@ -134,15 +140,22 @@ ite_alive_value :: proc(using hla: ^HollowArray($T), index: ^int) -> (^HollowArr
 	index^ = 0
 	return {}, false
 }
+ite_alive_value :: proc(using hla: ^HollowArray($T), index: ^int) -> (T, bool) {
+	res, ok := ite_alive_hvalue(hla, index)
+	if ok {
+		return res.value, true
+	}
+	return nil, false
+}
 ite_alive_ptr :: proc(using hla: ^HollowArray($T), index: ^int) -> (^T, bool) {
-	res, ok := ite_alive_value(hla, index)
+	res, ok := ite_alive_hvalue(hla, index)
 	if ok {
 		return &res.value, true
 	}
 	return nil, false
 }
 ite_alive_handle :: proc(using hla: ^HollowArray($T), index: ^int) -> (HollowArrayHandle(T), bool) {
-	res, ok := ite_alive_value(hla, index)
+	res, ok := ite_alive_hvalue(hla, index)
 	if ok {
 		return {
 			hla,
@@ -153,7 +166,10 @@ ite_alive_handle :: proc(using hla: ^HollowArray($T), index: ^int) -> (HollowArr
 	return {}, false
 }
 
-ites_alive_value :: proc(using hla: ^HollowArray($T)) -> (^HollowArrayValue(T), bool) {
+ites_alive_hvalue :: proc(using hla: ^HollowArray($T)) -> (^HollowArrayValue(T), bool) {
+	return ite_alive_hvalue(hla, &hla.__ite)
+}
+ites_alive_value :: proc(using hla: ^HollowArray($T)) -> (T, bool) {
 	return ite_alive_value(hla, &hla.__ite)
 }
 ites_alive_ptr :: proc(using hla: ^HollowArray($T)) -> (^T, bool) {
