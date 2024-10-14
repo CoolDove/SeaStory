@@ -95,7 +95,7 @@ main :: proc() {
 		rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
 
 		rl.EndDrawing()
-
+		free_all(context.temp_allocator)
 	}
 	rl.CloseWindow()
 }

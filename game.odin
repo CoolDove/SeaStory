@@ -111,7 +111,7 @@ game_init :: proc(using g: ^Game) {
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 
-	birdgen.interval = 0.2
+	birdgen.interval = 3.0
 }
 
 game_update :: proc(using g: ^Game, delta: f64) {
@@ -223,15 +223,23 @@ game_draw :: proc(using g: ^Game) {
 		// if bird.dest_time > 0 do rl.DrawLineV(bird.pos, bird.destination, rl.RED)
 	}
 
-	for tower in towers {
+	draw_towers := slice.clone(towers[:]); defer delete(draw_towers)
+	slice.sort_by_cmp(draw_towers, proc(a, b: ^Tower) -> slice.Ordering {
+		if a.pos.y > b.pos.y do return .Greater
+		else if a.pos.y < b.pos.y do return .Less
+		else do return .Equal
+	})
+
+	for tower in draw_towers {
 		draw_building(g, tower.pos.x, tower.pos.y, res.tower_tex)
 	}
 
 	draw_ui(g)
 
-	// building is always a 32*32 picture
+	// building is always a 32*n picture
 	draw_building :: proc(using g: ^Game, x,y: int, tex: rl.Texture) {
-		rl.DrawTexturePro(tex, {0,0,32,32}, {cast(f32)x,cast(f32)y, 1, 1}, {0,0}, 0, rl.WHITE)
+		height := cast(f32) tex.height
+		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)x,cast(f32)y, 1, height/32.0}, {0,1}, 0, rl.WHITE)
 	}
 
 	draw_cell :: proc(using g: ^Game, x,y: int) {
