@@ -5,8 +5,11 @@ import "core:math/rand"
 import "core:math/noise"
 import "core:math/linalg"
 import rl "vendor:raylib"
+import hla "collections/hollow_array"
 
 
+
+BirdHandle :: hla.HollowArrayHandle(Bird)
 Bird :: struct {
 	hitpoint : int,
 	pos : Vec2,
@@ -62,7 +65,8 @@ find_empty_cell :: proc(g: ^Game, from: [2]int, buffer: ^[BLOCK_WIDTH*BLOCK_WIDT
 	return {}, false
 }
 
-bird_update :: proc(b: ^Bird, g: ^Game, delta: f64) {
+bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
+	b := hla.hla_get_pointer(handle)
 	if b.dest_time == 0 {
 		if len(g.land) == 0 do return
 		i := rand.uint32()%(auto_cast len(g.land))
@@ -72,6 +76,9 @@ bird_update :: proc(b: ^Bird, g: ^Game, delta: f64) {
 		b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y}
 		b.dest_time = g.time
 	}
+	if b.hitpoint <= 0 {
+		game_kill_bird(g, handle)
+	}
 	if b.dest_time != 0 {
 		dir := linalg.normalize(b.destination - b.pos)
 		step := 2*auto_cast delta
@@ -80,10 +87,10 @@ bird_update :: proc(b: ^Bird, g: ^Game, delta: f64) {
 			idx := get_index(target.x, target.y)
 			if g.hitpoint[idx] > 0.0 {
 				g.hitpoint[idx] -= cast(f32)(1.0/5.0 * delta)
-				if g.hitpoint[idx] <= 0.0 {
-					g.mask[idx] = 0
-					b.dest_time = 0
-				}
+			}
+			if g.hitpoint[idx] <= 0.0 {
+				g.mask[idx] = 0
+				b.dest_time = 0
 			}
 		} else {
 			b.pos += dir * 2 * auto_cast delta

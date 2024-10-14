@@ -50,7 +50,7 @@ game_add_tower :: proc(g: ^Game, p: Position) -> bool {
 	for t in hla.hla_ite(&g.towers, &ite) {
 		if t.pos == p do return false
 	}
-	hla_append(&g.towers, Tower{pos=p, range=4, shoot_interval=1})
+	hla_append(&g.towers, Tower{pos=p, range=4, shoot_interval=0.25})
 	return true
 }
 
@@ -165,8 +165,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	// bird gen
 	birdgen_update(g, &g.birdgen, 1.0/64.0)
 
-	for b in hla.ites_alive_ptr(&g.birds) {
-		bird_update(b, g, delta)
+	for bird_handle in hla.ites_alive_handle(&g.birds) {
+		bird_update(bird_handle, g, delta)
 	}
 	for t in hla.ites_alive_ptr(&g.towers) {
 		tower_update(t, g, delta)
@@ -217,7 +217,10 @@ game_draw :: proc(using g: ^Game) {
 	rl.DrawRectangleV({cast(f32)hover_cell.x, cast(f32)hover_cell.y}, {0.9, 0.9}, {255,255,255, 80})
 
 	for bird in hla.ites_alive_ptr(&g.birds) {
-		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {cast(f32)bird.pos.x,cast(f32)bird.pos.y, 1, 1}, {0,0}, 0, rl.WHITE)
+		x := cast(f32)bird.pos.x
+		y := cast(f32)bird.pos.y
+		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1, 1}, {0,0}, 0, {0,0,0, 64})// shadow
+		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
 	}
 
 	draw_towers := make([dynamic]^Tower)
@@ -231,11 +234,12 @@ game_draw :: proc(using g: ^Game) {
 
 	for tower in draw_towers {
 		center :rl.Vector2= {cast(f32)tower.pos.x + 0.5, cast(f32)tower.pos.y + 0.5}
-		rl.DrawCircleLinesV(center, auto_cast tower.range, rl.RED)
+		rl.DrawCircleLinesV(center, auto_cast tower.range, {255, 100, 100, 128})
 		draw_building(g, tower.pos.x, tower.pos.y, res.tower_tex)
 		if target, ok := hla.hla_get_pointer(tower.target); ok {
 			thickness :f32= auto_cast ((0.3-0.1)*(tower.shoot_charge/tower.shoot_interval)+0.1)
-			rl.DrawLineEx(center, target.pos+{0.5,0.5}, thickness, {200, 100, 20, 64})
+			rl.DrawLineEx(center, target.pos+{0.5,0.5}, thickness, {80, 100, 160, 128})
+			rl.DrawLineEx(center, target.pos+{0.5,0.5}, thickness*0.4, {200, 230, 220, 255})
 		}
 	}
 

@@ -30,7 +30,9 @@ tower_update :: proc(tower: ^Tower, g: ^Game, delta: f64) {
 		if linalg.distance(b.pos, tower_center) > auto_cast tower.range {// 超出范围，丢失锁定
 			tower.target = {}
 		} else if tower.shoot_charge >= tower.shoot_interval {
-			game_kill_bird(g, tower.target)
+			// game_kill_bird(g, tower.target)
+			bird := hla.hla_get_pointer(tower.target)
+			bird.hitpoint -= 25
 			tower.shoot_charge = 0
 		}
 	} else {
