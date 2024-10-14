@@ -76,10 +76,11 @@ _tower_draw :: proc(handle: hla._HollowArrayHandle) {
 _tower_extra_draw :: proc(handle: hla._HollowArrayHandle) {
 	using hla
 	tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
+	from := tower.center - {0,1.0}
 	if target, ok := hla.hla_get_pointer(tower.target); ok {
 		thickness :f32= auto_cast ((0.3-0.1)*(tower.shoot_charge/tower.shoot_interval)+0.1)
-		rl.DrawLineEx(tower.center, target.pos+{0.5,0.5}, thickness, {80, 100, 160, 128})
-		rl.DrawLineEx(tower.center, target.pos+{0.5,0.5}, thickness*0.4, {200, 230, 220, 255})
+		rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness, {80, 100, 160, 128})
+		rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness*0.4, {200, 230, 220, 255})
 	}
 }
 
