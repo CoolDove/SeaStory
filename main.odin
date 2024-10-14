@@ -9,6 +9,7 @@ import "core:math/noise"
 import "core:math/linalg"
 import "core:math"
 import "core:strings"
+import "core:unicode/utf8"
 import rl "vendor:raylib"
 
 camera : rl.Camera2D
@@ -29,6 +30,8 @@ Vec2 :: rl.Vector2
 Vec2i :: [2]int
 
 
+FONT_DEFAULT : rl.Font
+
 get_index :: proc(x,y: int) -> int {
 	return x+y*(auto_cast BLOCK_WIDTH)
 }
@@ -38,11 +41,30 @@ in_range :: proc(x,y: int) -> bool {
 	return !(x < 0 || y < 0 || x >= w || y >= w)
 }
 
+@(private="file")
+_data_font := #load("smiley.ttf", []u8)
+@(private="file")
+_data_charsheet := #load("char_sheet.txt", string)
+
 main :: proc() {
 	rl.SetConfigFlags({rl.ConfigFlag.WINDOW_RESIZABLE})
 	rl.InitWindow(800, 600, "Minesweeper")
 
 	rl.SetTargetFPS(60)
+
+
+	{// load font
+		runes := utf8.string_to_runes(_data_charsheet, context.temp_allocator)
+		FONT_DEFAULT = rl.LoadFontFromMemory(
+			".ttf", 
+			raw_data(_data_font), 
+			cast(i32)len(_data_font), 
+			32, 
+			&runes[0], 
+			cast(i32)len(runes))
+	}
+
+
 
 	camera.zoom = 20
 
@@ -88,6 +110,7 @@ main :: proc() {
 		rl.BeginMode2D(camera)
 		game_draw(&game)
 		rl.EndMode2D()
+		draw_ui()
 
 		debug_color := rl.Color{0,255,0,255}
 		rl.DrawText(fmt.ctprintf("zoom: {}", camera.zoom), 10, 10+30, 28, debug_color)

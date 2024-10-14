@@ -33,29 +33,25 @@ Game :: struct {
 	using operation : GameOperation,
 }
 
+PlacingMode :: enum {
+	Tower, PowerPump
+}
+
 GameOperation :: struct {
 	hover_cell : [2]int,
 	last_position : rl.Vector2,
 	mouse_position_drag_start : rl.Vector2,
+	placing_mode : PlacingMode,
 }
 GameResources :: struct {
 	tower_tex : rl.Texture,
+	power_pump_tex : rl.Texture,
 	bird_tex : rl.Texture
 }
 
 Position :: struct {
 	x, y : int,
 }
-
-// game_add_tower :: proc(g: ^Game, p: Position) -> bool {
-// 	using hla
-// 	ite : hla.HollowArrayIterator
-// 	for t in hla.hla_ite(&g.towers, &ite) {
-// 		if t.pos == p do return false
-// 	}
-// 	hla_append(&g.towers, Tower{pos=p, range=4, shoot_interval=0.25})
-// 	return true
-// }
 
 game_add_bird :: proc(g: ^Game, p: rl.Vector2) {
 	hla.hla_append(&g.birds, Bird{
@@ -114,6 +110,7 @@ game_init :: proc(using g: ^Game) {
 	rand.shuffle(block[:])
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
+	res.power_pump_tex = rl.LoadTexture("res/power_pump.png");
 
 	buildings = hla.hla_make(^Building, 32)
 	birdgen.interval = 0.5
@@ -141,13 +138,27 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		camera.target += last-now
 	} 
 
+
+	if rl.IsKeyReleased(.Q) {
+		game.placing_mode = .Tower
+	} else if rl.IsKeyReleased(.W) {
+		game.placing_mode = .PowerPump
+	}
+
 	if rl.IsMouseButtonReleased(.RIGHT) {
 		mark_toggle(&game, hover_cell.x, hover_cell.y)
-		if mask[get_index(hover_cell.x, hover_cell.y)] != FLAG_TOUCHED {
-			hla.hla_append(&g.buildings, tower_new(hover_cell))
-			fmt.printf("add tower\n")
+		switch game.placing_mode {
+		case .Tower:
+			if mask[get_index(hover_cell.x, hover_cell.y)] == FLAG_TOUCHED {
+				hla.hla_append(&g.buildings, tower_new(hover_cell))
+			}
+		case .PowerPump:
+			if mask[get_index(hover_cell.x, hover_cell.y)] != FLAG_TOUCHED {
+				hla.hla_append(&g.buildings, power_pump_new(hover_cell))
+			}
 		}
 	}
+
 	if !dead && rl.IsMouseButtonReleased(.LEFT) {
 		if in_range(hover_cell.x, hover_cell.y) {
 			// ** sweep
@@ -279,8 +290,6 @@ game_draw :: proc(using g: ^Game) {
 		e.extra_draw(e.data)
 	}
 
-	draw_ui(g)
-
 	draw_cell :: proc(using g: ^Game, x,y: int) {
 		idx := get_index(x,y)
 		v,m := block[idx], mask[idx]
@@ -325,7 +334,27 @@ game_draw :: proc(using g: ^Game) {
 	}
 }
 
-draw_ui :: proc(g: ^Game) {
+draw_ui :: proc() {
+	viewport := Vec2{cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()}
+
+	card_width :f32= 50
+	card_height :f32= 60
+
+	rect :rl.Rectangle= { 10, viewport.y - card_height - 10, card_width, card_height }
+
+	draw_mode_card("炮塔", "Q", &rect, game.placing_mode == .Tower)
+	draw_mode_card("能量泵", "W", &rect, game.placing_mode == .PowerPump)
+
+	draw_mode_card :: proc(name, key: cstring, rect: ^rl.Rectangle, selected : bool) {
+		rl.DrawRectangleRec(rect^, {140, 140, 140, 255} if !selected else {200, 200, 200, 255})
+		measure := rl.MeasureTextEx(FONT_DEFAULT, name, 32, 1)
+		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x, rect.y} + {0, measure.y - 32}, 32, 1, rl.BLACK)
+
+		measure = rl.MeasureTextEx(FONT_DEFAULT, key, 20, 1)
+		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x, rect.y + rect.width - 20}, 20, 1, rl.BLACK)
+
+		rect.x += rect.width + 10
+	}
 }
 
 DrawElem :: struct {
