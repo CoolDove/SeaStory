@@ -16,6 +16,9 @@ PowerPump :: struct {
 @private
 _PowerPump_VTable :Building_VTable= {
 	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
+		using hla
+		power_pump := hla_get_value(transmute(hla.HollowArrayHandle(^PowerPump))handle)
+		if !building_need_bomb_check(power_pump) do return
 	},
 	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
@@ -51,5 +54,6 @@ _PowerPump_VTable :Building_VTable= {
 	},
 	_is_place_on_water = proc() -> bool {
 		return true
-	}
+	},
+	_define_hitpoint = proc() -> int { return 150 }
 }

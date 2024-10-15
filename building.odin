@@ -35,6 +35,7 @@ Building_VTable :: struct {
 	release : proc(b: ^Building),
 
 	_is_place_on_water : proc() -> bool,
+	_define_hitpoint : proc() -> int,
 }
 
 Building_VTable_Empty :Building_VTable= {
@@ -45,37 +46,42 @@ Building_VTable_Empty :Building_VTable= {
 	init = proc(b: ^Building) {},
 	release = proc(b: ^Building) {},
 
-	_is_place_on_water = proc() -> bool { return false }
+	_is_place_on_water = proc() -> bool { return false },
+	_define_hitpoint = proc() -> int { return 150 }
 }
 
-building_new :: proc($T: typeid, position: Vec2i, hitpoint: int) -> ^T {
+// !!! where you register a new building type
+_building_vtable :: proc(t: typeid) -> ^Building_VTable {
+	if t == Tower do return &_Tower_VTable
+	if t == PowerPump do return &_PowerPump_VTable
+	if t == Minestation do return &_Minestation_VTable
+	if t == Mother do return &_Mother_VTable
+	return nil
+}
+
+
+building_new :: proc($T: typeid, position: Vec2i) -> ^T {
 	t :^Building= cast(^Building)new(T)
 	t._vtable = _building_vtable(T)
 	t.type = T
 	t.position = position
-	t.hitpoint = hitpoint
-	t.hitpoint_define = hitpoint
 	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
+	t.hitpoint_define = t._vtable._define_hitpoint()
+	t.hitpoint = t.hitpoint_define
 	return auto_cast t
 }
 
-building_new_ :: proc(T: typeid, position: Vec2i, hitpoint: int) -> ^Building {
+building_new_ :: proc(T: typeid, position: Vec2i) -> ^Building {
 	ptr, _ := mem.alloc(type_info_of(T).size)
 	t := cast(^Building)ptr
 	t._vtable = _building_vtable(T)
 	t.type = T
 	t.position = position
-	t.hitpoint = hitpoint
-	t.hitpoint_define = hitpoint
 	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
+	t.hitpoint_define = t._vtable._define_hitpoint()
+	t.hitpoint = t.hitpoint_define
+	fmt.printf("new building, hitpoint: {}\n", t.hitpoint)
 	return auto_cast t
-}
-
-_building_vtable :: proc(t: typeid) -> ^Building_VTable {
-	if t == Tower do return &_Tower_VTable
-	if t == PowerPump do return &_PowerPump_VTable
-	if t == Minestation do return &_Minestation_VTable
-	return nil
 }
 
 building_init :: proc(b: ^Building) {
@@ -102,13 +108,21 @@ building_get_cost :: proc(bt: typeid) -> int {
 	if bt == Minestation do return 100
 	return 0
 }
-
 // second
 building_get_colddown :: proc(bt: typeid) -> f64 {
 	if bt == Tower do return 5
 	if bt == PowerPump do return 3
 	if bt == Minestation do return 3
 	return 0
+}
+
+building_need_bomb_check :: proc(using b: ^Building) -> bool {
+	if game.block[get_index(b.position.x, b.position.y)] == ITEM_BOMB {
+		return true
+	} else {
+		hitpoint -= 1
+		return false
+	}
 }
 
 draw_building_hpbar :: proc(using b: ^Building) {

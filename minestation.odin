@@ -25,6 +25,7 @@ _Minestation_VTable :Building_VTable= {
 		using hla
 		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
 		using station
+		if !building_need_bomb_check(station) do return
 		
 		if station.powered > 0 {
 			collect_time += delta
@@ -36,8 +37,8 @@ _Minestation_VTable :Building_VTable= {
 	},
 	init = proc(b: ^Building) {
 		station := cast(^Minestation)b
-		station.collect_interval = 0.5
-		station.collect_amount = 10
+		station.collect_interval = 1
+		station.collect_amount = 5
 	},
 	release = Building_VTable_Empty.release,
 	draw = proc(handle: hla._HollowArrayHandle) {
@@ -57,5 +58,6 @@ _Minestation_VTable :Building_VTable= {
 	},
 	_is_place_on_water = proc() -> bool {
 		return true
-	}
+	},
+	_define_hitpoint = proc() -> int { return 150 }
 }

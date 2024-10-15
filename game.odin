@@ -2,6 +2,7 @@ package main
 
 import "base:runtime"
 import "core:fmt"
+import "core:time"
 import "core:strconv"
 import "core:slice"
 import "core:math/rand"
@@ -65,6 +66,7 @@ GameResources :: struct {
 	bird_tex : rl.Texture,
 	no_power_tex : rl.Texture,
 	minestation_tex : rl.Texture,
+	mother_tex : rl.Texture,
 }
 
 Position :: struct {
@@ -129,18 +131,52 @@ mark_toggle :: proc(using g: ^Game, x,y : int) {
 }
 
 
-game_init :: proc(using g: ^Game) {
-	for i in 0..<160 do block[i] = ITEM_BOMB
-	rand.shuffle(block[:])
+game_init :: proc(g: ^Game) {
+	// generate map
+	for i in 0..<160 do game.block[i] = ITEM_BOMB
+	rand.reset(transmute(u64)time.tick_now())
+	rand.shuffle(game.block[:])
+	for x in 0..<BLOCK_WIDTH {
+		for y in 0..<BLOCK_WIDTH {
+			using game
+			check :: proc(count: ^int, x,y: int) {
+				if in_range(x,y) && block[get_index(x,y)] == ITEM_BOMB {
+					count ^= count^ + 1
+				}
+			}
+			x, y :int= auto_cast x, auto_cast y
+			if block[get_index(x,y)] == ITEM_BOMB do continue
+			count : int
+			check(&count, x-1, y-1)
+			check(&count, x, y-1)
+			check(&count, x+1, y-1)
+
+			check(&count, x-1, y)
+			// check(&count, x, y)
+			check(&count, x+1, y)
+
+			check(&count, x-1, y+1)
+			check(&count, x, y+1)
+			check(&count, x+1, y+1)
+			block[get_index(x,y)] = cast(u32)count
+			if count > 0 && rand.float32() < 0.2 {
+				block[get_index(x,y)] = ITEM_QUESTION
+			}
+		}
+	}
+
+	using game
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 	res.power_pump_tex = rl.LoadTexture("res/power_pump.png");
 	res.no_power_tex = rl.LoadTexture("res/no_power.png");
 	res.minestation_tex = rl.LoadTexture("res/minestation.png");
+	res.mother_tex = rl.LoadTexture("res/mother.png");
 
 	mineral = 400
 
 	buildings = hla.hla_make(^Building, 32)
+	birds = hla.hla_make(Bird, 16)
 
 	mine_check_interval = 0.5
 
@@ -158,10 +194,34 @@ game_init :: proc(using g: ^Game) {
 			t
 		}
 	}
+
+	{// sweep the first cell
+		for i: int; true; i += 1 {
+			p := cast(int)(BLOCK_WIDTH * BLOCK_WIDTH / 2) + cast(int)BLOCK_WIDTH/2 + (1 if i%2==0 else -1) * auto_cast i/2
+			fmt.printf("try index: {} ({})\n", p, block[p])
+			if block[p] == 0 {
+				x, y := p%auto_cast BLOCK_WIDTH, p/auto_cast BLOCK_WIDTH
+				sweep(&game, x, y)
+				b := building_new_(Mother, {x,y})
+				h := hla.hla_append(&g.buildings, b)
+				building_init(b)
+				buildingmap[get_index(x, y)] = b
+				break
+			}
+		}
+	}
 }
 
 game_release :: proc(using g: ^Game) {
+	for b in hla.ites_alive_value(&g.buildings) {
+		building_release(b)
+		free(b)
+	}
 	hla.hla_delete(&g.buildings)
+	for b in hla.ites_alive_handle(&g.birds) {
+		game_kill_bird(g, b)
+	}
+	hla.hla_delete(&g.birds)
 	delete(game.building_placers)
 }
 
@@ -184,12 +244,16 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		camera.target += last-now
 	} 
 
-	if rl.IsKeyReleased(.Q) {
-		game.current_placer = &game.building_placers[Tower]
-	} else if rl.IsKeyReleased(.W) {
-		game.current_placer = &game.building_placers[PowerPump]
-	} else if rl.IsKeyReleased(.E) {
-		game.current_placer = &game.building_placers[Minestation]
+	if rl.IsKeyReleased(.ESCAPE) {
+		game.current_placer = nil
+	} else {
+		if rl.IsKeyReleased(.Q) {
+			game.current_placer = &game.building_placers[Tower]
+		} else if rl.IsKeyReleased(.W) {
+			game.current_placer = &game.building_placers[PowerPump]
+		} else if rl.IsKeyReleased(.E) {
+			game.current_placer = &game.building_placers[Minestation]
+		}
 	}
 
 	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.D) && rl.IsKeyDown(.LEFT_ALT) {
@@ -208,15 +272,15 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	}
 
 	if rl.IsMouseButtonReleased(.RIGHT) {// place building
-		mark_toggle(&game, hover_cell.x, hover_cell.y)
 		if current_placer != nil && placeable {
-			b := building_new_(current_placer.building_type, hover_cell, 350)
+			b := building_new_(current_placer.building_type, hover_cell)
 			h := hla.hla_append(&g.buildings, b)
 			building_init(b)
 			buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
-
 			game.mineral -= building_get_cost(current_placer.building_type);
 			current_placer.colddown_time = current_placer.colddown // reset colddown
+		} else {
+			mark_toggle(&game, hover_cell.x, hover_cell.y)
 		}
 	}
 

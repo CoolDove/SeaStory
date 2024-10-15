@@ -83,4 +83,5 @@ _Tower_VTable :Building_VTable= {
 	}, 
 	release = proc(b: ^Building) {},
 	_is_place_on_water = Building_VTable_Empty._is_place_on_water,
+	_define_hitpoint = proc() -> int { return 350 }
 }

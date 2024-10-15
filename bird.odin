@@ -110,6 +110,7 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 	}
 	if b.hitpoint <= 0 {
 		game_kill_bird(g, handle)
+		return
 	}
 	if b.dest_time != 0 {
 		dir := linalg.normalize(b.destination - b.pos)

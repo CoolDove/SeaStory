@@ -90,35 +90,6 @@ main :: proc() {
 
 	game_init(&game)
 
-	for x in 0..<BLOCK_WIDTH {
-		for y in 0..<BLOCK_WIDTH {
-			using game
-			check :: proc(count: ^int, x,y: int) {
-				if in_range(x,y) && block[get_index(x,y)] == ITEM_BOMB {
-					count ^= count^ + 1
-				}
-			}
-			x, y :int= auto_cast x, auto_cast y
-			if block[get_index(x,y)] == ITEM_BOMB do continue
-			count : int
-			check(&count, x-1, y-1)
-			check(&count, x, y-1)
-			check(&count, x+1, y-1)
-
-			check(&count, x-1, y)
-			// check(&count, x, y)
-			check(&count, x+1, y)
-
-			check(&count, x-1, y+1)
-			check(&count, x, y+1)
-			check(&count, x+1, y+1)
-			block[get_index(x,y)] = cast(u32)count
-			if count > 0 && rand.float32() < 0.2 {
-				block[get_index(x,y)] = ITEM_QUESTION
-			}
-		}
-	}
-
 	for !rl.WindowShouldClose() {
 		if rl.IsKeyPressed(.F1) do GAME_DEBUG = !GAME_DEBUG
 		game_update(&game, 1.0/60.0)
@@ -135,10 +106,13 @@ main :: proc() {
 		rl.DrawText(fmt.ctprintf("zoom: {}", camera.zoom), 10, 10+30, 28, debug_color)
 		rl.DrawText(fmt.ctprintf("target: {}", camera.target), 10, 10+30+30, 28, debug_color)
 		rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
+		rl.DrawText(fmt.ctprintf("hover cell: {}", game.hover_cell), 10, 10+30+30+30*2, 28, debug_color)
 
 		rl.EndDrawing()
 		free_all(context.temp_allocator)
 	}
+	game_release(&game)
+
 	rl.CloseWindow()
 }
 
