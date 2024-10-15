@@ -12,10 +12,6 @@ import "core:strings"
 import hla "collections/hollow_array"
 import rl "vendor:raylib"
 
-BuildingType :: enum {
-	Tower, PowerPump
-}
-
 Building :: struct {
 	position : Vec2i,
 	center : Vec2,// sorted by center.y before drew
@@ -52,4 +48,10 @@ building_init :: proc(b: ^Building) {
 }
 building_release :: proc(b: ^Building) {
 	b->release()
+}
+
+building_get_cost :: proc(bt: typeid) -> int {
+	if bt == Tower do return 200
+	if bt == PowerPump do return 100
+	return 0
 }

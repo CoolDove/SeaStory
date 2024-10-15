@@ -32,6 +32,8 @@ Game :: struct {
 	// gameplay resources
 	mineral : int,
 
+	mine_check_interval : f64, // check per 0.5s
+
 	res : GameResources,
 	using operation : GameOperation,
 }
@@ -120,6 +122,8 @@ game_init :: proc(using g: ^Game) {
 
 	buildings = hla.hla_make(^Building, 32)
 
+	mine_check_interval = 0.5
+
 	tool_colddown_init()
 	tool_colddown_start()
 }
@@ -146,7 +150,6 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		camera.target += last-now
 	} 
 
-
 	if rl.IsKeyReleased(.Q) {
 		game.placing_mode = .Tower
 	} else if rl.IsKeyReleased(.W) {
@@ -158,9 +161,11 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	case .Tower:
 		placeable = in_range(hover_cell.x, hover_cell.y) && mask[get_index(hover_cell.x, hover_cell.y)] == FLAG_TOUCHED
 		placeable &= tool_colddown_get(.Tower) <= 0
+		placeable &= building_get_cost(Tower) <= game.mineral
 	case .PowerPump:
 		placeable = in_range(hover_cell.x, hover_cell.y) && mask[get_index(hover_cell.x, hover_cell.y)] != FLAG_TOUCHED
 		placeable &= tool_colddown_get(.PowerPump) <= 0
+		placeable &= building_get_cost(PowerPump) <= game.mineral
 	}
 
 	if rl.IsMouseButtonReleased(.RIGHT) {
@@ -171,6 +176,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				b := tower_new(hover_cell)
 				h := hla.hla_append(&g.buildings, b)
 				building_init(b)
+				game.mineral -= building_get_cost(Tower);
 				tool_colddown_start_by_mode(.Tower)
 			}
 		case .PowerPump:
@@ -178,6 +184,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				b := power_pump_new(hover_cell)
 				h := hla.hla_append(&g.buildings, b)
 				building_init(b)
+				game.mineral -= building_get_cost(PowerPump);
 				tool_colddown_start_by_mode(.PowerPump)
 			}
 		}
@@ -207,6 +214,14 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	// bird gen
 	birdgen_update(g, &g.birdgen, 1.0/64.0)
+
+	if game.mine_check_interval > 0 {
+		game.mine_check_interval -= delta
+		if game.mine_check_interval <= 0 {
+			game.mine_check_interval = 0.5
+			game.mineral += 2 + cast(int)(cast(f64)len(game.land) * 0.1)
+		}
+	}
 
 	for building_handle in hla.ites_alive_handle(&game.buildings) {
 		building := hla.hla_get_pointer(building_handle)^
@@ -420,10 +435,14 @@ draw_ui :: proc() {
 
 	rect :rl.Rectangle= { 10, viewport.y - card_height - 10, card_width, card_height }
 
-	draw_mode_card("炮塔", "Q", &rect, .Tower)
-	draw_mode_card("能量泵", "W", &rect, .PowerPump)
+	draw_mode_card("炮塔", "Q", &rect, .Tower, Tower)
+	draw_mode_card("能量泵", "W", &rect, .PowerPump, PowerPump)
 
-	draw_mode_card :: proc(name, key: cstring, rect: ^rl.Rectangle, e: PlacingMode) {
+	str_mineral := fmt.ctprintf("矿:{} 地块:{}", game.mineral, len(game.land))
+	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
+	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50}, 28, 1, rl.YELLOW)
+
+	draw_mode_card :: proc(name, key: cstring, rect: ^rl.Rectangle, e: PlacingMode, building_type: typeid) {
 		shadow_rect := rect^
 		shadow_rect.x += 8
 		shadow_rect.y += 8
@@ -445,10 +464,18 @@ draw_ui :: proc() {
 		rl.DrawRectangleRec(colddown_rect, {200, 200, 200, 255})
 
 		measure := rl.MeasureTextEx(FONT_DEFAULT, name, 20, 1)
-		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x, rect.y} + {0, measure.y - 20}, 20, 1, rl.BLACK)
+		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x+0.5*rect.width-0.5*measure.x, rect.y} + {0, measure.y - 20}, 20, 1, rl.BLACK)
 
 		measure = rl.MeasureTextEx(FONT_DEFAULT, key, 20, 1)
-		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x, rect.y + rect.width - 20}, 20, 1, rl.GRAY)
+		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x+rect.width-measure.x, rect.y + rect.height - 20}, 20, 1, rl.GRAY)
+
+		if transmute(int)building_type != 0 {
+			cost := building_get_cost(building_type)
+			color := rl.GREEN if cost <= game.mineral else rl.RED
+			str := fmt.ctprintf("{}", cost)
+			position :Vec2= {rect.x, rect.y + rect.width - 20}
+			rl.DrawTextEx(FONT_DEFAULT, str, position, 20, 1, color)
+		}
 
 		rect.x += rect.width + 10
 	}
