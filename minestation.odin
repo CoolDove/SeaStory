@@ -59,5 +59,5 @@ _Minestation_VTable :Building_VTable= {
 	_is_place_on_water = proc() -> bool {
 		return true
 	},
-	_define_hitpoint = proc() -> int { return 150 }
+	_define_hitpoint = proc() -> int { return 80 }
 }

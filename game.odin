@@ -92,7 +92,7 @@ game_kill_bird :: proc(g: ^Game, b: hla.HollowArrayHandle(Bird)) {
 	hla.hla_remove_handle(b)
 }
 
-sweep :: proc(using g: ^Game, x,y : int, peek:= false) {
+sweep :: proc(using g: ^Game, x,y : int, peek:= false) -> bool/*alive*/ {
 	idx := get_index(x,y)
 	m := mask[idx]
 	v := block[idx]
@@ -116,9 +116,10 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) {
 			_sweep(g, x,y+1)
 			_sweep(g, x+1,y+1)
 		} else if v == ITEM_BOMB {
-			dead = true
+			return false
 		}
 	}
+	return true
 }
 
 mark_toggle :: proc(using g: ^Game, x,y : int) {
@@ -166,6 +167,8 @@ game_init :: proc(g: ^Game) {
 	}
 
 	using game
+	game.land = make([dynamic][2]int, 512)
+
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 	res.power_pump_tex = rl.LoadTexture("res/power_pump.png");
@@ -206,6 +209,7 @@ game_init :: proc(g: ^Game) {
 				h := hla.hla_append(&g.buildings, b)
 				building_init(b)
 				buildingmap[get_index(x, y)] = b
+				camera.target = b.center
 				break
 			}
 		}
@@ -225,9 +229,17 @@ game_release :: proc(using g: ^Game) {
 	delete(game.building_placers)
 }
 
-game_update :: proc(using g: ^Game, delta: f64) {
-	camera.offset = rl.Vector2{ cast(f32)rl.GetScreenWidth()*0.5, cast(f32)rl.GetScreenHeight()*0.5 }
+_game_update_dead :: proc(delta: f64) {
+	if rl.IsMouseButtonPressed(.LEFT) {
+		game_end = true
+	}
+}
 
+game_update :: proc(using g: ^Game, delta: f64) {
+	if dead {
+		_game_update_dead(delta)
+		return
+	}
 	hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 	hover_cell = {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
 
@@ -284,10 +296,28 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		}
 	}
 
-	if !dead && rl.IsMouseButtonReleased(.LEFT) {
-		if in_range(hover_cell.x, hover_cell.y) {
+	if rl.IsMouseButtonReleased(.LEFT) {
+		x, y:= hover_cell.x, hover_cell.y
+		if in_range(x, y) && game.buildingmap[get_index(x, y)] == nil {
 			// ** sweep
-			sweep(&game, hover_cell.x, hover_cell.y)
+			if !sweep(&game, x, y) {
+				_blow_cell(hover_cell+{-1,-1})
+				_blow_cell(hover_cell+{0,-1})
+				_blow_cell(hover_cell+{1,-1})
+				_blow_cell(hover_cell+{-1,0})
+				_blow_cell(hover_cell+{0,0})
+				_blow_cell(hover_cell+{1,0})
+				_blow_cell(hover_cell+{-1,1})
+				_blow_cell(hover_cell+{0,1})
+				_blow_cell(hover_cell+{1,1})
+				_blow_cell :: proc(p: Vec2i) {
+					if !in_range(p.x, p.y) do return
+					idx := get_index(p.x, p.y)
+					building := game.buildingmap[get_index(p.x, p.y)]
+					if building != nil do building.hitpoint = 0
+					game.hitpoint[idx] = 0
+				}
+			}
 		}
 	}
 
@@ -298,7 +328,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	}
 
 	zoom_speed_max, zoom_speed_min :f32= 1.2, 0.2
-	zoom_max, zoom_min :f32= 42, 18
+	zoom_max, zoom_min :f32= 56, 18
 	zoom_speed :f32= ((camera.zoom-zoom_min)/(zoom_max-zoom_min)) * ( zoom_speed_max-zoom_speed_min ) + zoom_speed_min
 	camera.zoom += rl.GetMouseWheelMove() * zoom_speed
 	camera.zoom = clamp(camera.zoom, zoom_min, zoom_max)
@@ -391,8 +421,6 @@ game_draw :: proc(using g: ^Game) {
 			draw_cell(g, auto_cast x, auto_cast y)
 		}
 	}
-
-	if dead do rl.DrawRectangleV({0,0}, {cast(f32)BLOCK_WIDTH, cast(f32)BLOCK_WIDTH}, {255,60,60, 80})
 
 	rl.DrawLine(-100, 0, 100, 0, rl.Color{255,255,0, 255})
 	rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
@@ -579,6 +607,12 @@ draw_ui :: proc() {
 
 		rect.x += rect.width + 10
 	}
+	// draw dead
+	if game.dead {
+		rl.DrawRectangleV({0,0}, {cast(f32)BLOCK_WIDTH, cast(f32)BLOCK_WIDTH}, {255,60,60, 80})
+		rl.DrawTextEx(FONT_DEFAULT, "You lose, press mouse left to close game", {20, 40}, 48, 0, rl.BLACK)
+	}
+
 }
 
 DrawElem :: struct {

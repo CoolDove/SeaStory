@@ -24,7 +24,7 @@ FLAG_MARKED :u32= 0xef
 FLAG_TOUCHED :u32= 1
 
 game : Game
-
+game_end : bool
 
 // types
 Vec2 :: rl.Vector2
@@ -84,13 +84,12 @@ main :: proc() {
 			cast(i32)len(runes))
 	}
 
-	camera.zoom = 20
-
-	rand.reset(42)
+	camera.zoom = 36
 
 	game_init(&game)
 
-	for !rl.WindowShouldClose() {
+	for !rl.WindowShouldClose() && !game_end {
+		camera.offset = rl.Vector2{ cast(f32)rl.GetScreenWidth()*0.5, cast(f32)rl.GetScreenHeight()*0.5 }
 		if rl.IsKeyPressed(.F1) do GAME_DEBUG = !GAME_DEBUG
 		game_update(&game, 1.0/60.0)
 
@@ -102,11 +101,13 @@ main :: proc() {
 		rl.EndMode2D()
 		draw_ui()
 
-		debug_color := rl.Color{0,255,0,255}
-		rl.DrawText(fmt.ctprintf("zoom: {}", camera.zoom), 10, 10+30, 28, debug_color)
-		rl.DrawText(fmt.ctprintf("target: {}", camera.target), 10, 10+30+30, 28, debug_color)
-		rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
-		rl.DrawText(fmt.ctprintf("hover cell: {}", game.hover_cell), 10, 10+30+30+30*2, 28, debug_color)
+		if GAME_DEBUG {
+			debug_color := rl.Color{0,255,0,255}
+			rl.DrawText(fmt.ctprintf("zoom: {}", camera.zoom), 10, 10+30, 28, debug_color)
+			rl.DrawText(fmt.ctprintf("target: {}", camera.target), 10, 10+30+30, 28, debug_color)
+			rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
+			rl.DrawText(fmt.ctprintf("hover cell: {}", game.hover_cell), 10, 10+30+30+30*2, 28, debug_color)
+		}
 
 		rl.EndDrawing()
 		free_all(context.temp_allocator)

@@ -22,7 +22,10 @@ _Mother_VTable :Building_VTable= {
 	},
 	init = proc(b: ^Building) {
 	},
-	release = Building_VTable_Empty.release,
+	release = proc(b: ^Building) {
+		m := cast(^Mother)b
+		game.dead = true
+	},
 	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		mother := hla_get_value(transmute(hla.HollowArrayHandle(^Mother))handle)
