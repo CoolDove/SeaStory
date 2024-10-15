@@ -32,7 +32,13 @@ _Mother_VTable :Building_VTable= {
 		mother := hla_get_value(transmute(hla.HollowArrayHandle(^Mother))handle)
 		tex := game.res.mother_tex
 		height := cast(f32) tex.height
-		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)mother.position.x,cast(f32)mother.position.y, 1, height/32.0}, {0,0}, 0, rl.WHITE)
+		src, dst :rl.Rectangle= {0,0,32, height}, {cast(f32)mother.position.x,cast(f32)mother.position.y, 1, height/32.0}
+		frame :f32= 0.04
+		rl.DrawTexturePro(tex, src, {dst.x, dst.y+frame, dst.width, dst.height}, {0,0}, 0, rl.BLACK)
+		rl.DrawTexturePro(tex, src, {dst.x, dst.y-frame, dst.width, dst.height}, {0,0}, 0, rl.BLACK)
+		rl.DrawTexturePro(tex, src, {dst.x+frame, dst.y, dst.width, dst.height}, {0,0}, 0, rl.BLACK)
+		rl.DrawTexturePro(tex, src, {dst.x-frame, dst.y, dst.width, dst.height}, {0,0}, 0, rl.BLACK)
+		rl.DrawTexturePro(tex, src, dst, {0,0}, 0, rl.WHITE)
 	},
 	extra_draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
