@@ -25,6 +25,9 @@ Game :: struct {
 	birdgen : BirdGenerator,
 
 	time : f64,
+	building_placing_colddown : [2]struct{
+		time, duration : f64
+	},// use PlacingMode as the index
 
 	// gameplay resources
 	mineral : int,
@@ -42,6 +45,7 @@ GameOperation :: struct {
 	last_position : rl.Vector2,
 	mouse_position_drag_start : rl.Vector2,
 	placing_mode : PlacingMode,
+	placeable : bool,
 }
 GameResources :: struct {
 	tower_tex : rl.Texture,
@@ -64,7 +68,6 @@ game_add_bird :: proc(g: ^Game, p: rl.Vector2) {
 game_kill_bird :: proc(g: ^Game, b: hla.HollowArrayHandle(Bird)) {
 	hla.hla_remove_handle(b)
 }
-
 
 sweep :: proc(using g: ^Game, x,y : int, peek:= false) {
 	idx := get_index(x,y)
@@ -114,6 +117,9 @@ game_init :: proc(using g: ^Game) {
 
 	buildings = hla.hla_make(^Building, 32)
 	birdgen.interval = 0.5
+
+	tool_colddown_init()
+	tool_colddown_start()
 }
 
 game_release :: proc(using g: ^Game) {
@@ -145,16 +151,28 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		game.placing_mode = .PowerPump
 	}
 
+	placeable = false
+	switch game.placing_mode {
+	case .Tower:
+		placeable = in_range(hover_cell.x, hover_cell.y) && mask[get_index(hover_cell.x, hover_cell.y)] == FLAG_TOUCHED
+		placeable &= tool_colddown_get(.Tower) <= 0
+	case .PowerPump:
+		placeable = in_range(hover_cell.x, hover_cell.y) && mask[get_index(hover_cell.x, hover_cell.y)] != FLAG_TOUCHED
+		placeable &= tool_colddown_get(.PowerPump) <= 0
+	}
+
 	if rl.IsMouseButtonReleased(.RIGHT) {
 		mark_toggle(&game, hover_cell.x, hover_cell.y)
 		switch game.placing_mode {
 		case .Tower:
-			if mask[get_index(hover_cell.x, hover_cell.y)] == FLAG_TOUCHED {
+			if placeable {
 				hla.hla_append(&g.buildings, tower_new(hover_cell))
+				tool_colddown_start_by_mode(.Tower)
 			}
 		case .PowerPump:
-			if mask[get_index(hover_cell.x, hover_cell.y)] != FLAG_TOUCHED {
+			if placeable {
 				hla.hla_append(&g.buildings, power_pump_new(hover_cell))
+				tool_colddown_start_by_mode(.PowerPump)
 			}
 		}
 	}
@@ -192,8 +210,35 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	for bird_handle in hla.ites_alive_handle(&g.birds) {
 		bird_update(bird_handle, g, delta)
 	}
-
+	colddowns := game.building_placing_colddown
+	for c in 0..<len(colddowns) {
+		if colddowns[c].time > 0 {
+			game.building_placing_colddown[c].time -= delta
+		} else {
+			game.building_placing_colddown[c].time = 0
+		}
+	}
 	g.time += delta
+}
+
+tool_colddown_get :: proc(mode: PlacingMode) -> f64 {
+	return game.building_placing_colddown[cast(int)mode].time
+}
+tool_colddown_start_by_mode :: proc(mode: PlacingMode) {
+	tool_colddown_start(cast(int)mode)
+}
+tool_colddown_init :: proc() {
+	game.building_placing_colddown[cast(int)PlacingMode.Tower].duration = 1.5
+	game.building_placing_colddown[cast(int)PlacingMode.PowerPump].duration = 1.0
+}
+tool_colddown_start :: proc(index := -1/*-1 means all*/) {
+	length := len(game.building_placing_colddown)
+	if index < 0 || index >= length {
+		for i in 0..<length do tool_colddown_start(i)
+	} else {
+		colddown := &game.building_placing_colddown[index]
+		colddown.time = colddown.duration
+	}
 }
 
 game_draw :: proc(using g: ^Game) {
@@ -235,7 +280,10 @@ game_draw :: proc(using g: ^Game) {
 	rl.DrawLine(-100, 0, 100, 0, rl.Color{255,255,0, 255})
 	rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
 
-	rl.DrawRectangleV({cast(f32)hover_cell.x, cast(f32)hover_cell.y}, {0.9, 0.9}, {255,255,255, 80})
+	// draw cursor
+	hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
+	rl.DrawRectangleV(hover_cell_corner, {0.9, 0.9}, {255,255,255, 80})
+	if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
 
 	for bird in hla.ites_alive_ptr(&g.birds) {
 		x := cast(f32)bird.pos.x
@@ -342,16 +390,35 @@ draw_ui :: proc() {
 
 	rect :rl.Rectangle= { 10, viewport.y - card_height - 10, card_width, card_height }
 
-	draw_mode_card("炮塔", "Q", &rect, game.placing_mode == .Tower)
-	draw_mode_card("能量泵", "W", &rect, game.placing_mode == .PowerPump)
+	draw_mode_card("炮塔", "Q", &rect, .Tower)
+	draw_mode_card("能量泵", "W", &rect, .PowerPump)
 
-	draw_mode_card :: proc(name, key: cstring, rect: ^rl.Rectangle, selected : bool) {
-		rl.DrawRectangleRec(rect^, {140, 140, 140, 255} if !selected else {200, 200, 200, 255})
-		measure := rl.MeasureTextEx(FONT_DEFAULT, name, 32, 1)
-		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x, rect.y} + {0, measure.y - 32}, 32, 1, rl.BLACK)
+	draw_mode_card :: proc(name, key: cstring, rect: ^rl.Rectangle, e: PlacingMode) {
+		shadow_rect := rect^
+		shadow_rect.x += 8
+		shadow_rect.y += 8
+		selected := game.placing_mode == e
+		rl.DrawRectangleRec(shadow_rect, {0,0,0, 64})
+		if selected {;
+			framer := rect^
+			framer.x -= 4
+			framer.y -= 4
+			framer.width += 8
+			framer.height += 8
+			rl.DrawRectangleRec(framer, {170, 190, 40, 200})
+		}
+		rl.DrawRectangleRec(rect^, {60,60,60, 255})
+
+		colddown_rect := rect^
+		colddown := &game.building_placing_colddown[cast(int)e]
+		colddown_rect.height *= 1-cast(f32)(colddown.time/ colddown.duration);
+		rl.DrawRectangleRec(colddown_rect, {200, 200, 200, 255})
+
+		measure := rl.MeasureTextEx(FONT_DEFAULT, name, 20, 1)
+		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x, rect.y} + {0, measure.y - 20}, 20, 1, rl.BLACK)
 
 		measure = rl.MeasureTextEx(FONT_DEFAULT, key, 20, 1)
-		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x, rect.y + rect.width - 20}, 20, 1, rl.BLACK)
+		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x, rect.y + rect.width - 20}, 20, 1, rl.GRAY)
 
 		rect.x += rect.width + 10
 	}

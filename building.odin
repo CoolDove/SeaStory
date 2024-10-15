@@ -17,7 +17,8 @@ Building :: struct {
 	center : Vec2,// sorted by center.y before drew
 	hitpoint : int,
 
-	tex : rl.Texture,
+	powered : bool,
+
 	using _vtable : ^Building_VTable,
 	extra : rawptr,
 }
