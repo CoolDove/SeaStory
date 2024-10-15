@@ -57,6 +57,13 @@ building_get_cost :: proc(bt: typeid) -> int {
 	return 0
 }
 
+// second
+building_get_colddown :: proc(bt: typeid) -> f64 {
+	if bt == Tower do return 5
+	if bt == PowerPump do return 3
+	return 0
+}
+
 draw_building_hpbar :: proc(using b: ^Building) {
 	draw_hpbar({center.x-0.4, center.y+0.3, 0.8, 0.12}, cast(f32)hitpoint/cast(f32)hitpoint_define, 0.02)
 }

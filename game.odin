@@ -61,17 +61,22 @@ Position :: struct {
 	x, y : int,
 }
 
-game_add_bird :: proc(g: ^Game, p: rl.Vector2) {
-	hla.hla_append(&g.birds, Bird{
+game_add_bird :: proc(g: ^Game, p: rl.Vector2) -> BirdHandle {
+	b := hla.hla_append(&g.birds, Bird{
 		pos = p,
 		hitpoint = 100,
 		shoot_interval = 0.8,
 		attack = 10,
 		speed = 1.2,
 	})
+	bird := hla.hla_get_pointer(b)
+	bird._candidates_buffer = make([dynamic]_BirdTargetCandidate, 128)
+	return b 
 }
 
 game_kill_bird :: proc(g: ^Game, b: hla.HollowArrayHandle(Bird)) {
+	bird := hla.hla_get_pointer(b)
+	delete(bird._candidates_buffer)
 	hla.hla_remove_handle(b)
 }
 
@@ -274,8 +279,8 @@ tool_colddown_start_by_mode :: proc(mode: PlacingMode) {
 	tool_colddown_start(cast(int)mode)
 }
 tool_colddown_init :: proc() {
-	game.building_placing_colddown[cast(int)PlacingMode.Tower].duration = 2.0
-	game.building_placing_colddown[cast(int)PlacingMode.PowerPump].duration = 1.0
+	game.building_placing_colddown[cast(int)PlacingMode.Tower].duration = building_get_colddown(Tower)
+	game.building_placing_colddown[cast(int)PlacingMode.PowerPump].duration = building_get_colddown(PowerPump)
 }
 tool_colddown_start :: proc(index := -1/*-1 means all*/) {
 	length := len(game.building_placing_colddown)
@@ -335,27 +340,28 @@ game_draw :: proc(using g: ^Game) {
 
 	draw_elems := make([dynamic]DrawElem); defer delete(draw_elems)
 
+	// draw birds
 	for bird in hla.ites_alive_ptr(&g.birds) {
 		x := cast(f32)bird.pos.x
 		y := cast(f32)bird.pos.y
 		DrawBird :: struct {
 			position: Vec2,
 		}
-		draw := new(DrawBird)
-		draw.position = {x,y}
+		bird := bird
 		append(&draw_elems, DrawElem{
-			draw,
+			bird,
 			auto_cast y+0.05,
-			proc(draw: rawptr) {
-				d := cast(^DrawBird)draw
-				x,y := d.position.x, d.position.y
+			proc(bird: rawptr) {
+				bird := cast(^Bird)bird
+				x,y := bird.pos.x, bird.pos.y
 				rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1, 1}, {0,0}, 0, {0,0,0, 64})// shadow
 				rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
 			},
-			proc(draw: rawptr) {
+			proc(bird: rawptr) {
+				bird := cast(^Bird)bird
+				rl.DrawLineV(bird.pos, bird.destination, {255,0,0, 64})
 			},
 			proc(draw: rawptr) {
-				free(cast(^DrawBird)draw)
 			}
 		})
 	}

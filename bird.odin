@@ -1,6 +1,8 @@
 package main
 
 import "core:fmt"
+import "core:slice"
+import "core:math"
 import "core:math/rand"
 import "core:math/noise"
 import "core:math/linalg"
@@ -11,14 +13,19 @@ BirdHandle :: hla.HollowArrayHandle(Bird)
 Bird :: struct {
 	hitpoint : int,
 	pos : Vec2,
-	target : Vec2i,
+
 	speed : f64,
 	destination : Vec2,
 	dest_time : f64,
 	level : int,
 	attack : int,// how much damage one shoot
 	shoot_interval : f64,
-	shoot_colddown : f64
+	shoot_colddown : f64,
+	_candidates_buffer : [dynamic]_BirdTargetCandidate
+}
+_BirdTargetCandidate :: struct {
+	position : Vec2i,
+	weight : int,
 }
 
 BirdGenerator :: struct {
@@ -41,17 +48,26 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 		if wave.time <= 0 {
 			for i in 0..<wave.count {
 				pos :Vec2= {rand.float32()*wave.born.width+wave.born.x, rand.float32()*wave.born.height+wave.born.y}
-				game_add_bird(g, pos)
+				b := game_add_bird(g, pos)
+				bird := hla.hla_get_pointer(b)
+				t := wave.target
+				bird.destination = {cast(f32)(rand.int31()%cast(i32)(t.width))+t.x, cast(f32)(rand.int31()%cast(i32)(t.height))+t.y}
+				bird.dest_time = game.time
 			}
 			wave.time = 0
 		}
 	}
 	if wave.time == 0 {
+		if len(game.land) == 0 do return
 		wave.time = auto_cast (rand.int31()%5+7)
 		wave.count = auto_cast (rand.int31()%4+4)
 		x := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
 		y := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
 		wave.born = {x,y, 4,4}
+		l := game.land[rand.int31()%auto_cast len(game.land)]
+		w := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.x, 4)
+		h := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.y, 4)
+		wave.target = {auto_cast l.x-2, auto_cast l.y-2, w, h}
 	}
 }
 
@@ -84,13 +100,8 @@ find_empty_cell :: proc(g: ^Game, from: [2]int, buffer: ^[BLOCK_WIDTH*BLOCK_WIDT
 bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 	b := hla.hla_get_pointer(handle)
 	if b.dest_time == 0 {
-		if len(g.land) == 0 do return
-		i := rand.uint32()%(auto_cast len(g.land))
-		x := g.land[i].x
-		y := g.land[i].y
-		b.target = g.land[i]
-		b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y}
-		b.dest_time = g.time
+		if _bird_find_target(b) do b.dest_time = g.time
+		else do return
 	}
 	if b.hitpoint <= 0 {
 		game_kill_bird(g, handle)
@@ -128,5 +139,37 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 }
 
 bird_draw :: proc(bg: ^BirdGenerator) {
-	rl.DrawRectangleRec(bg.wave.born, {200, 60,60, 128})
+	if bg.wave.time != 0 {
+		rl.DrawRectangleRec(bg.wave.born, {120,120,60, 128})
+		rl.DrawRectangleRec(bg.wave.target, {200,60,60, 128})
+	}
+}
+
+@(private="file")
+_bird_find_target :: proc(b: ^Bird) -> bool {
+	g := &game
+	if len(g.land) == 0 do return false
+
+	clear(&b._candidates_buffer)
+	for l in game.land {
+		distance := linalg.distance(b.pos, Vec2{auto_cast l.x, auto_cast l.y});
+		append(&b._candidates_buffer, _BirdTargetCandidate{ l, cast(int)distance+3 })
+	}
+	for building in hla.ites_alive_value(&game.buildings) {
+		distance := linalg.distance(b.pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
+		append(&b._candidates_buffer, _BirdTargetCandidate{ building.position, cast(int)distance })
+	}
+	if len(b._candidates_buffer) == 0 do return false
+
+	slice.sort_by_cmp(b._candidates_buffer[:], proc(a,b: _BirdTargetCandidate) -> slice.Ordering {
+		if a.weight > b.weight do return .Greater
+		if a.weight < b.weight do return .Less
+		return .Equal
+	})
+
+	des := b._candidates_buffer[0]
+	x := des.position.x
+	y := des.position.y
+	b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y + rand.float32()*0.1}
+	return true
 }
