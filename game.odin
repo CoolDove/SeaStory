@@ -50,7 +50,8 @@ GameOperation :: struct {
 GameResources :: struct {
 	tower_tex : rl.Texture,
 	power_pump_tex : rl.Texture,
-	bird_tex : rl.Texture
+	bird_tex : rl.Texture,
+	no_power_tex : rl.Texture,
 }
 
 Position :: struct {
@@ -114,6 +115,7 @@ game_init :: proc(using g: ^Game) {
 	res.tower_tex = rl.LoadTexture("res/tower.png");
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 	res.power_pump_tex = rl.LoadTexture("res/power_pump.png");
+	res.no_power_tex = rl.LoadTexture("res/no_power.png");
 
 	buildings = hla.hla_make(^Building, 32)
 	birdgen.interval = 0.5
@@ -166,12 +168,16 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		switch game.placing_mode {
 		case .Tower:
 			if placeable {
-				hla.hla_append(&g.buildings, tower_new(hover_cell))
+				b := tower_new(hover_cell)
+				h := hla.hla_append(&g.buildings, b)
+				building_init(b)
 				tool_colddown_start_by_mode(.Tower)
 			}
 		case .PowerPump:
 			if placeable {
-				hla.hla_append(&g.buildings, power_pump_new(hover_cell))
+				b := power_pump_new(hover_cell)
+				h := hla.hla_append(&g.buildings, b)
+				building_init(b)
 				tool_colddown_start_by_mode(.PowerPump)
 			}
 		}
@@ -228,7 +234,7 @@ tool_colddown_start_by_mode :: proc(mode: PlacingMode) {
 	tool_colddown_start(cast(int)mode)
 }
 tool_colddown_init :: proc() {
-	game.building_placing_colddown[cast(int)PlacingMode.Tower].duration = 1.5
+	game.building_placing_colddown[cast(int)PlacingMode.Tower].duration = 2.0
 	game.building_placing_colddown[cast(int)PlacingMode.PowerPump].duration = 1.0
 }
 tool_colddown_start :: proc(index := -1/*-1 means all*/) {

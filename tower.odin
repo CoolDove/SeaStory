@@ -21,6 +21,7 @@ Tower :: struct {
 tower_new :: proc(position: Vec2i) -> ^Tower {
 	t :^Tower= new(Tower)
 	t._vtable = &_Tower_VTable
+	t.type = Tower
 	t.position = position
 	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
 	t.range = 4 
@@ -37,7 +38,7 @@ _tower_update :: proc(handle: hla._HollowArrayHandle, delta: f64) {
 	using hla
 	tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
 
-	if tower.shoot_charge < tower.shoot_interval {
+	if tower.shoot_charge < tower.shoot_interval && tower.powered > 0 {
 		tower.shoot_charge += delta
 	}
 
@@ -76,11 +77,18 @@ _tower_draw :: proc(handle: hla._HollowArrayHandle) {
 _tower_extra_draw :: proc(handle: hla._HollowArrayHandle) {
 	using hla
 	tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
-	from := tower.center - {0,1.0}
-	if target, ok := hla.hla_get_pointer(tower.target); ok {
-		thickness :f32= auto_cast ((0.3-0.1)*(tower.shoot_charge/tower.shoot_interval)+0.1)
-		rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness, {80, 100, 160, 128})
-		rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness*0.4, {200, 230, 220, 255})
+	if tower.powered > 0 {
+		from := tower.center - {0,1.0}
+		if target, ok := hla.hla_get_pointer(tower.target); ok {
+			thickness :f32= auto_cast (0.3*tower.shoot_charge/tower.shoot_interval)
+			rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness, {80, 100, 160, 128})
+			rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness*0.4, {200, 230, 220, 255})
+		}
+	} else {
+		dest := rl.Rectangle{tower.center.x,tower.center.y, 1,1}
+		shadow := dest; shadow.x += 0.05; shadow.y += 0.05
+		rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, shadow, {0.5,0.5}, 0, {0,0,0, 64})
+		rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, dest, {0.5,0.5}, 0, rl.WHITE)
 	}
 }
 
@@ -89,4 +97,6 @@ _Tower_VTable :Building_VTable= {
 	update = _tower_update,
 	draw = _tower_draw,
 	extra_draw = _tower_extra_draw,
+	init = proc(b: ^Building) {}, 
+	release = proc(b: ^Building) {},
 }
