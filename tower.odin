@@ -22,6 +22,8 @@ tower_new :: proc(position: Vec2i) -> ^Tower {
 	t :^Tower= new(Tower)
 	t._vtable = &_Tower_VTable
 	t.type = Tower
+	t.hitpoint = 450
+	t.hitpoint_define = 450
 	t.position = position
 	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
 	t.range = 4 
@@ -77,6 +79,7 @@ _tower_draw :: proc(handle: hla._HollowArrayHandle) {
 _tower_extra_draw :: proc(handle: hla._HollowArrayHandle) {
 	using hla
 	tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
+	draw_building_hpbar(tower)
 	if tower.powered > 0 {
 		from := tower.center - {0,1.0}
 		if target, ok := hla.hla_get_pointer(tower.target); ok {

@@ -15,6 +15,7 @@ import rl "vendor:raylib"
 Building :: struct {
 	position : Vec2i,
 	center : Vec2,// sorted by center.y before drew
+	hitpoint_define : int,
 	hitpoint : int,
 	type : typeid,
 
@@ -54,4 +55,8 @@ building_get_cost :: proc(bt: typeid) -> int {
 	if bt == Tower do return 200
 	if bt == PowerPump do return 100
 	return 0
+}
+
+draw_building_hpbar :: proc(using b: ^Building) {
+	draw_hpbar({center.x-0.4, center.y+0.3, 0.8, 0.12}, cast(f32)hitpoint/cast(f32)hitpoint_define, 0.02)
 }

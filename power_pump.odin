@@ -18,6 +18,8 @@ power_pump_new :: proc(position: Vec2i) -> ^PowerPump {
 	t._vtable = &_PowerPump_VTable
 	t.type = PowerPump
 	t.position = position
+	t.hitpoint = 150
+	t.hitpoint_define = 150
 	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
 	t.range = 6
 	return t
@@ -45,6 +47,8 @@ _power_pump_draw :: proc(handle: hla._HollowArrayHandle) {
 _power_pump_extra_draw :: proc(handle: hla._HollowArrayHandle) {
 	using hla
 	power_pump := hla_get_value(transmute(hla.HollowArrayHandle(^PowerPump))handle)
+	center := power_pump.center
+	draw_building_hpbar(power_pump);
 }
 
 @private

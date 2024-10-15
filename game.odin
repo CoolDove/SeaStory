@@ -15,7 +15,8 @@ import rl "vendor:raylib"
 Game :: struct {
 	block : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
 	mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
-	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]f32,
+	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]int,
+	buildingmap : [BLOCK_WIDTH*BLOCK_WIDTH]^Building,
 	dead : bool,
 	// towers : hla.HollowArray(Tower),
 	buildings : hla.HollowArray(^Building),
@@ -64,7 +65,8 @@ game_add_bird :: proc(g: ^Game, p: rl.Vector2) {
 	hla.hla_append(&g.birds, Bird{
 		pos = p,
 		hitpoint = 100,
-		shoot_interval = 1.0,
+		shoot_interval = 0.8,
+		attack = 10,
 		speed = 1.2,
 	})
 }
@@ -80,7 +82,7 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) {
 	if m == 0 {
 		mask[idx] = FLAG_TOUCHED
 		append(&land, [2]int{x,y})
-		hitpoint[idx] = 1.0
+		hitpoint[idx] = 20
 		if v == 0 {
 			_sweep :: proc(g: ^Game, x,y: int) {
 				if in_range(x,y) {
@@ -140,6 +142,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	dragged_distance := linalg.distance(mouse_position_drag_start, rl.GetMousePosition())
 
+	// ** operation
 	if rl.IsMouseButtonPressed(.MIDDLE) {
 		last_position = rl.GetMousePosition()
 		mouse_position_drag_start = last_position
@@ -168,7 +171,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		placeable &= building_get_cost(PowerPump) <= game.mineral
 	}
 
-	if rl.IsMouseButtonReleased(.RIGHT) {
+	if rl.IsMouseButtonReleased(.RIGHT) {// place building
 		mark_toggle(&game, hover_cell.x, hover_cell.y)
 		switch game.placing_mode {
 		case .Tower:
@@ -176,6 +179,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				b := tower_new(hover_cell)
 				h := hla.hla_append(&g.buildings, b)
 				building_init(b)
+				buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
+
 				game.mineral -= building_get_cost(Tower);
 				tool_colddown_start_by_mode(.Tower)
 			}
@@ -184,6 +189,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				b := power_pump_new(hover_cell)
 				h := hla.hla_append(&g.buildings, b)
 				building_init(b)
+				buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
+
 				game.mineral -= building_get_cost(PowerPump);
 				tool_colddown_start_by_mode(.PowerPump)
 			}
@@ -201,7 +208,6 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		return rl.IsMouseButtonPressed(btn) && rl.IsMouseButtonDown(btp)
 	}
 	if _is_double_button(.LEFT,.RIGHT) || _is_double_button(.RIGHT,.LEFT) {
-
 	}
 
 	zoom_speed_max, zoom_speed_min :f32= 1.2, 0.2
@@ -211,6 +217,25 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	camera.zoom = clamp(camera.zoom, zoom_min, zoom_max)
 
 	last_position = rl.GetMousePosition()
+
+
+	// ** game logic
+	for bh in hla.ites_alive_handle(&game.buildings) {
+		b := hla.hla_get_value(bh)
+		if b.hitpoint <= 0 {
+			game.buildingmap[get_index(b.position.x, b.position.y)] = nil
+			hla.hla_remove_handle(bh)
+		}
+	}
+
+	for i := len(game.land)-1; i>-1; i-=1 {
+		landp := game.land[i]
+		idx := get_index(landp.x, landp.y)
+		if hitpoint[idx] <= 0 {
+			ordered_remove(&game.land, i)
+			game.mask[idx] = 0
+		}
+	}
 
 	// bird gen
 	birdgen_update(g, &g.birdgen, 1.0/64.0)
@@ -313,8 +338,6 @@ game_draw :: proc(using g: ^Game) {
 	for bird in hla.ites_alive_ptr(&g.birds) {
 		x := cast(f32)bird.pos.x
 		y := cast(f32)bird.pos.y
-		// rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1, 1}, {0,0}, 0, {0,0,0, 64})// shadow
-		// rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
 		DrawBird :: struct {
 			position: Vec2,
 		}
@@ -322,7 +345,7 @@ game_draw :: proc(using g: ^Game) {
 		draw.position = {x,y}
 		append(&draw_elems, DrawElem{
 			draw,
-			auto_cast y,
+			auto_cast y+0.05,
 			proc(draw: rawptr) {
 				d := cast(^DrawBird)draw
 				x,y := d.position.x, d.position.y

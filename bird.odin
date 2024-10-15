@@ -16,8 +16,9 @@ Bird :: struct {
 	destination : Vec2,
 	dest_time : f64,
 	level : int,
-	shoot_interval : f32,
-	shoot_colddown : f32
+	attack : int,// how much damage one shoot
+	shoot_interval : f64,
+	shoot_colddown : f64
 }
 
 BirdGenerator :: struct {
@@ -97,15 +98,28 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 	if b.dest_time != 0 {
 		dir := linalg.normalize(b.destination - b.pos)
 		step := b.speed*auto_cast delta
+		if b.shoot_colddown > 0 {
+			b.shoot_colddown -= delta
+		}
 		if auto_cast linalg.distance(b.destination, b.pos) < step {
-			target :Vec2i= {auto_cast b.destination.x, auto_cast b.destination.y}
-			idx := get_index(target.x, target.y)
-			if g.hitpoint[idx] > 0.0 {
-				g.hitpoint[idx] -= cast(f32)(1.0/5.0 * delta)
-			}
-			if g.hitpoint[idx] <= 0.0 {
-				g.mask[idx] = 0
-				b.dest_time = 0
+			if b.shoot_colddown <= 0 {// attack
+				target :Vec2i= {auto_cast b.destination.x, auto_cast b.destination.y}
+				idx := get_index(target.x, target.y)
+				target_building := g.buildingmap[idx]
+				if target_building != nil {
+					if target_building.hitpoint > 0 {
+						target_building.hitpoint -= b.attack
+					}
+				} else {
+					if g.hitpoint[idx] > 0.0 {
+						g.hitpoint[idx] -= b.attack
+					}
+					if g.hitpoint[idx] <= 0.0 {
+						g.mask[idx] = 0
+						b.dest_time = 0
+					}
+				}
+				b.shoot_colddown = b.shoot_interval
 			}
 		} else {
 			b.pos += dir * 2 * auto_cast delta
