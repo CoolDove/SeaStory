@@ -486,11 +486,7 @@ draw_ui :: proc() {
 			framer.height += 8
 			rl.DrawRectangleRec(framer, {170, 190, 40, 200})
 		}
-		rl.DrawRectangleRec(rect^, {60,60,60, 255})
-
-		colddown_rect := rect^
-		colddown_rect.height *= 1-cast(f32)(colddown_time/ colddown);
-		rl.DrawRectangleRec(colddown_rect, {200, 200, 200, 255})
+		rl.DrawRectangleRec(rect^, {200,200,200, 255})
 
 		measure := rl.MeasureTextEx(FONT_DEFAULT, name, 20, 1)
 		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x+0.5*rect.width-0.5*measure.x, rect.y} + {0, measure.y - 20}, 20, 1, rl.BLACK)
@@ -505,6 +501,10 @@ draw_ui :: proc() {
 			position :Vec2= {rect.x, rect.y + rect.width - 20}
 			rl.DrawTextEx(FONT_DEFAULT, str, position, 20, 1, color)
 		}
+
+		colddown_rect := rect^
+		colddown_rect.height *= cast(f32)(colddown_time/ colddown);
+		rl.DrawRectangleRec(colddown_rect, {0,0,0, 64})
 
 		rect.x += rect.width + 10
 	}
