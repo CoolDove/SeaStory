@@ -270,7 +270,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.D) && rl.IsKeyDown(.LEFT_ALT) {
 		building := game.buildingmap[get_index(hover_cell.x, hover_cell.y)]
-		building.hitpoint -= 100
+		if building != nil do building.hitpoint -= 100
 	}
 
 	placeable = false

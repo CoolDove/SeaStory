@@ -47,13 +47,20 @@ birdgen_set :: proc(bg: ^BirdGenerator, count: int, time: f64) {
 	if len(game.land) == 0 do return
 	wave.time = auto_cast (rand.int31()%7+10)
 	wave.count = auto_cast (rand.int31()%4+4)
-	x := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
-	y := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
-	wave.born = {x,y, 4,4}
-	l := game.land[rand.int31()%auto_cast len(game.land)]
-	w := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.x, 4)
-	h := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.y, 4)
-	wave.target = {auto_cast l.x-2, auto_cast l.y-2, w, h}
+	bx := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
+	by := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
+	wave.born = {bx,by, 4,4}
+	ite : int
+	mother : Vec2i
+	for b in hla.ite_alive_value(&game.buildings, &ite) {
+		if b.type == Mother {
+			mother = b.position
+		}
+	}
+	offset :Vec2i= {cast(int)rand.int31()%4, cast(int)rand.int31()%4}
+	w := cast(f32)math.min(4, cast(int)BLOCK_WIDTH-(mother.x-offset.x))
+	h := cast(f32)math.min(4, cast(int)BLOCK_WIDTH-(mother.y-offset.y))
+	wave.target = {cast(f32)(mother.x-offset.x), cast(f32)(mother.y-offset.y), w, h}
 	bg.wave = wave
 }
 
