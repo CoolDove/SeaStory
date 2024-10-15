@@ -76,7 +76,7 @@ game_add_bird :: proc(g: ^Game, p: rl.Vector2) -> BirdHandle {
 		pos = p,
 		hitpoint = 100,
 		shoot_interval = 0.8,
-		attack = 2,
+		attack = 6,
 		speed = 1.2,
 	})
 	bird := hla.hla_get_pointer(b)
@@ -412,6 +412,9 @@ game_draw :: proc(using g: ^Game) {
 	}
 	for e in draw_elems {
 		e.extra_draw(e.data)
+	}
+	for e in draw_elems {
+		e.free(e.data)
 	}
 
 	bird_draw(&game.birdgen)

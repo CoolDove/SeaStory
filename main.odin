@@ -2,6 +2,7 @@ package main
 
 import "base:runtime"
 import "core:fmt"
+import "core:mem"
 import "core:strconv"
 import "core:slice"
 import "core:math/rand"
@@ -48,7 +49,23 @@ _data_font := #load("smiley.ttf", []u8)
 @(private="file")
 _data_charsheet := #load("char_sheet.txt", string)
 
+@(private="file")
+_track : mem.Tracking_Allocator
+
 main :: proc() {
+	mem.tracking_allocator_init(&_track, context.allocator)
+	context.allocator = mem.tracking_allocator(&_track)
+
+	defer {
+		for _, entry in _track.allocation_map {
+			fmt.printf("{} leaked: {}\n", entry.location, entry.size)
+		}
+		for entry in _track.bad_free_array {
+			fmt.printf("{} bad free: {}\n", entry.location)
+		}
+		mem.tracking_allocator_destroy(&_track)
+	}
+
 	rl.SetConfigFlags({rl.ConfigFlag.WINDOW_RESIZABLE})
 	rl.InitWindow(800, 600, "Minesweeper")
 
