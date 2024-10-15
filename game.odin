@@ -227,6 +227,7 @@ game_release :: proc(using g: ^Game) {
 	}
 	hla.hla_delete(&g.birds)
 	delete(game.building_placers)
+	delete(game.land)
 }
 
 _game_update_dead :: proc(delta: f64) {

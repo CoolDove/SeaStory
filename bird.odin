@@ -75,8 +75,11 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 				b := game_add_bird(g, pos)
 				bird := hla.hla_get_pointer(b)
 				t := wave.target
-				bird.destination = {cast(f32)(rand.int31()%cast(i32)(t.width))+t.x, cast(f32)(rand.int31()%cast(i32)(t.height))+t.y}
-				bird.dest_time = game.time
+				dpos := Vec2{cast(f32)(rand.int31()%cast(i32)(t.width))+t.x, cast(f32)(rand.int31()%cast(i32)(t.height))+t.y}
+				if !_bird_find_target(bird, dpos) {
+					bird.destination = dpos
+					bird.dest_time = game.time
+				}
 			}
 			wave.time = 0
 		}
@@ -112,7 +115,7 @@ find_empty_cell :: proc(g: ^Game, from: [2]int, buffer: ^[BLOCK_WIDTH*BLOCK_WIDT
 bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 	b := hla.hla_get_pointer(handle)
 	if b.dest_time == 0 {
-		if _bird_find_target(b) do b.dest_time = g.time
+		if _bird_find_target(b, b.pos) do b.dest_time = g.time
 		else do return
 	}
 	if b.hitpoint <= 0 {
@@ -153,30 +156,38 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 
 bird_draw :: proc(bg: ^BirdGenerator) {
 	if bg.wave.time != 0 {
-		rl.DrawRectangleRec(bg.wave.born, {120,120,60, 128})
-		rl.DrawRectangleRec(bg.wave.target, {200,60,60, 128})
+		rl.DrawRectangleRoundedLines(bg.wave.born, 0.6, 8, .1, {120,120,60, 128})
+		rl.DrawRectangleRoundedLines(bg.wave.target, 0.6, 8, .1, {200,60,60, 128})
 	}
 }
 
 @(private="file")
-_bird_find_target :: proc(b: ^Bird) -> bool {
+_bird_find_target :: proc(b: ^Bird, pos: Vec2) -> bool {
 	g := &game
 	if len(g.land) == 0 do return false
 
 	clear(&b._candidates_buffer)
 	for l in game.land {
-		distance := linalg.distance(b.pos, Vec2{auto_cast l.x, auto_cast l.y});
-		append(&b._candidates_buffer, _BirdTargetCandidate{ l, cast(int)distance+3 })
+		distance := linalg.distance(pos, Vec2{auto_cast l.x, auto_cast l.y});
+		weight := 128 - math.min(cast(int)distance, 128)
+		append(&b._candidates_buffer, _BirdTargetCandidate{ l, weight })
 	}
 	for building in hla.ites_alive_value(&game.buildings) {
-		distance := linalg.distance(b.pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
-		append(&b._candidates_buffer, _BirdTargetCandidate{ building.position, cast(int)distance })
+		distance := linalg.distance(pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
+		weight := 128 - math.min(cast(int)distance, 128)
+		weight += 3
+		// if building.type == Mother do weight += 1
+		// if building.type == PowerPump do weight += 1
+		hp_percent := cast(f64)building.hitpoint/cast(f64)building.hitpoint_define
+		if hp_percent < 0.9 do weight += 1
+		if hp_percent < 0.5 do weight += 1
+		append(&b._candidates_buffer, _BirdTargetCandidate{ building.position, weight })
 	}
 	if len(b._candidates_buffer) == 0 do return false
 
 	slice.sort_by_cmp(b._candidates_buffer[:], proc(a,b: _BirdTargetCandidate) -> slice.Ordering {
-		if a.weight > b.weight do return .Greater
-		if a.weight < b.weight do return .Less
+		if a.weight > b.weight do return .Less
+		if a.weight < b.weight do return .Greater
 		return .Equal
 	})
 
