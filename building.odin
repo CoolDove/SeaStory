@@ -3,6 +3,7 @@ package main
 import "base:runtime"
 import "core:fmt"
 import "core:strconv"
+import "core:mem"
 import "core:slice"
 import "core:math/rand"
 import "core:math/noise"
@@ -32,6 +33,49 @@ Building_VTable :: struct {
 
 	init : proc(b: ^Building),
 	release : proc(b: ^Building),
+
+	_is_place_on_water : proc() -> bool,
+}
+
+Building_VTable_Empty :Building_VTable= {
+	update = proc(handle: hla._HollowArrayHandle, delta: f64) {},
+	draw = proc(handle: hla._HollowArrayHandle) {},
+	extra_draw = proc(handle: hla._HollowArrayHandle) {},
+
+	init = proc(b: ^Building) {},
+	release = proc(b: ^Building) {},
+
+	_is_place_on_water = proc() -> bool { return false }
+}
+
+building_new :: proc($T: typeid, position: Vec2i, hitpoint: int) -> ^T {
+	t :^Building= cast(^Building)new(T)
+	t._vtable = _building_vtable(T)
+	t.type = T
+	t.position = position
+	t.hitpoint = hitpoint
+	t.hitpoint_define = hitpoint
+	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
+	return auto_cast t
+}
+
+building_new_ :: proc(T: typeid, position: Vec2i, hitpoint: int) -> ^Building {
+	ptr, _ := mem.alloc(type_info_of(T).size)
+	t := cast(^Building)ptr
+	t._vtable = _building_vtable(T)
+	t.type = T
+	t.position = position
+	t.hitpoint = hitpoint
+	t.hitpoint_define = hitpoint
+	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
+	return auto_cast t
+}
+
+_building_vtable :: proc(t: typeid) -> ^Building_VTable {
+	if t == Tower do return &_Tower_VTable
+	if t == PowerPump do return &_PowerPump_VTable
+	if t == Minestation do return &_Minestation_VTable
+	return nil
 }
 
 building_init :: proc(b: ^Building) {
@@ -55,6 +99,7 @@ building_release :: proc(b: ^Building) {
 building_get_cost :: proc(bt: typeid) -> int {
 	if bt == Tower do return 200
 	if bt == PowerPump do return 100
+	if bt == Minestation do return 100
 	return 0
 }
 
@@ -62,6 +107,7 @@ building_get_cost :: proc(bt: typeid) -> int {
 building_get_colddown :: proc(bt: typeid) -> f64 {
 	if bt == Tower do return 5
 	if bt == PowerPump do return 3
+	if bt == Minestation do return 3
 	return 0
 }
 

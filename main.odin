@@ -102,7 +102,7 @@ main :: proc() {
 	}
 
 	for !rl.WindowShouldClose() {
-		if rl.IsKeyDown(.F1) do GAME_DEBUG = !GAME_DEBUG
+		if rl.IsKeyPressed(.F1) do GAME_DEBUG = !GAME_DEBUG
 		game_update(&game, 1.0/60.0)
 
 		rl.BeginDrawing()

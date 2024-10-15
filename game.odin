@@ -19,7 +19,7 @@ Game :: struct {
 	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]int,
 	buildingmap : [BLOCK_WIDTH*BLOCK_WIDTH]^Building,
 	dead : bool,
-	// towers : hla.HollowArray(Tower),
+
 	buildings : hla.HollowArray(^Building),
 	birds : hla.HollowArray(Bird),
 
@@ -27,9 +27,9 @@ Game :: struct {
 	birdgen : BirdGenerator,
 
 	time : f64,
-	building_placing_colddown : [2]struct{
-		time, duration : f64
-	},// use PlacingMode as the index
+	// building_placing_colddown : [3]struct{
+	// 	time, duration : f64
+	// },// use PlacingMode as the index
 
 	// gameplay resources
 	mineral : int,
@@ -40,15 +40,21 @@ Game :: struct {
 	using operation : GameOperation,
 }
 
-PlacingMode :: enum {
-	Tower, PowerPump
+BuildingPlacer :: struct {
+	colddown : f64,
+	colddown_time : f64,
+	cost : int,
+	name, key : cstring,
+	building_type : typeid,
 }
 
 GameOperation :: struct {
 	hover_cell : [2]int,
 	last_position : rl.Vector2,
 	mouse_position_drag_start : rl.Vector2,
-	placing_mode : PlacingMode,
+
+	building_placers : map[typeid]BuildingPlacer,
+	current_placer : ^BuildingPlacer,
 	placeable : bool,
 }
 GameResources :: struct {
@@ -68,7 +74,7 @@ game_add_bird :: proc(g: ^Game, p: rl.Vector2) -> BirdHandle {
 		pos = p,
 		hitpoint = 100,
 		shoot_interval = 0.8,
-		attack = 5,
+		attack = 2,
 		speed = 1.2,
 	})
 	bird := hla.hla_get_pointer(b)
@@ -136,12 +142,25 @@ game_init :: proc(using g: ^Game) {
 
 	mine_check_interval = 0.5
 
-	tool_colddown_init()
-	tool_colddown_start()
+	building_placers = make(map[typeid]BuildingPlacer)
+	_register_building_placer(Tower, "炮塔", "Q")
+	_register_building_placer(PowerPump, "能量泵", "W")
+	_register_building_placer(Minestation, "采集站", "E")
+
+	_register_building_placer :: proc(t: typeid, name, key : cstring) {
+		c := building_get_colddown(t)
+		game.building_placers[t] = {
+			c, c,
+			building_get_cost(t),
+			name, key,
+			t
+		}
+	}
 }
 
 game_release :: proc(using g: ^Game) {
 	hla.hla_delete(&g.buildings)
+	delete(game.building_placers)
 }
 
 game_update :: proc(using g: ^Game, delta: f64) {
@@ -164,9 +183,11 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	} 
 
 	if rl.IsKeyReleased(.Q) {
-		game.placing_mode = .Tower
+		game.current_placer = &game.building_placers[Tower]
 	} else if rl.IsKeyReleased(.W) {
-		game.placing_mode = .PowerPump
+		game.current_placer = &game.building_placers[PowerPump]
+	} else if rl.IsKeyReleased(.E) {
+		game.current_placer = &game.building_placers[Minestation]
 	}
 
 	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.D) && rl.IsKeyDown(.LEFT_ALT) {
@@ -175,40 +196,25 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	}
 
 	placeable = false
-	switch game.placing_mode {
-	case .Tower:
+	if game.current_placer != nil {
+		p := game.current_placer
+		is_water_place := _building_vtable(p.building_type)._is_place_on_water()
 		placeable = in_range(hover_cell.x, hover_cell.y) && mask[get_index(hover_cell.x, hover_cell.y)] == FLAG_TOUCHED
-		placeable &= tool_colddown_get(.Tower) <= 0
-		placeable &= building_get_cost(Tower) <= game.mineral
-	case .PowerPump:
-		placeable = in_range(hover_cell.x, hover_cell.y) && mask[get_index(hover_cell.x, hover_cell.y)] != FLAG_TOUCHED
-		placeable &= tool_colddown_get(.PowerPump) <= 0
-		placeable &= building_get_cost(PowerPump) <= game.mineral
+		if is_water_place do placeable = !placeable
+		placeable &= building_placers[p.building_type].colddown_time <= 0
+		placeable &= building_get_cost(p.building_type) <= game.mineral
 	}
 
 	if rl.IsMouseButtonReleased(.RIGHT) {// place building
 		mark_toggle(&game, hover_cell.x, hover_cell.y)
-		switch game.placing_mode {
-		case .Tower:
-			if placeable {
-				b := tower_new(hover_cell)
-				h := hla.hla_append(&g.buildings, b)
-				building_init(b)
-				buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
+		if current_placer != nil && placeable {
+			b := building_new_(current_placer.building_type, hover_cell, 350)
+			h := hla.hla_append(&g.buildings, b)
+			building_init(b)
+			buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
 
-				game.mineral -= building_get_cost(Tower);
-				tool_colddown_start_by_mode(.Tower)
-			}
-		case .PowerPump:
-			if placeable {
-				b := power_pump_new(hover_cell)
-				h := hla.hla_append(&g.buildings, b)
-				building_init(b)
-				buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
-
-				game.mineral -= building_get_cost(PowerPump);
-				tool_colddown_start_by_mode(.PowerPump)
-			}
+			game.mineral -= building_get_cost(current_placer.building_type);
+			current_placer.colddown_time = current_placer.colddown // reset colddown
 		}
 	}
 
@@ -240,6 +246,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			building_release(b)
 			game.buildingmap[get_index(b.position.x, b.position.y)] = nil
 			hla.hla_remove_handle(bh)
+			free(b)
 			fmt.printf("building: {}{} die\n", b.position, b.type)
 		}
 	}
@@ -272,35 +279,15 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	for bird_handle in hla.ites_alive_handle(&g.birds) {
 		bird_update(bird_handle, g, delta)
 	}
-	colddowns := game.building_placing_colddown
-	for c in 0..<len(colddowns) {
-		if colddowns[c].time > 0 {
-			game.building_placing_colddown[c].time -= delta
+
+	for t, &p in game.building_placers {
+		if p.colddown_time > 0 {
+			p.colddown_time -= delta
 		} else {
-			game.building_placing_colddown[c].time = 0
+			p.colddown_time = 0
 		}
 	}
 	g.time += delta
-}
-
-tool_colddown_get :: proc(mode: PlacingMode) -> f64 {
-	return game.building_placing_colddown[cast(int)mode].time
-}
-tool_colddown_start_by_mode :: proc(mode: PlacingMode) {
-	tool_colddown_start(cast(int)mode)
-}
-tool_colddown_init :: proc() {
-	game.building_placing_colddown[cast(int)PlacingMode.Tower].duration = building_get_colddown(Tower)
-	game.building_placing_colddown[cast(int)PlacingMode.PowerPump].duration = building_get_colddown(PowerPump)
-}
-tool_colddown_start :: proc(index := -1/*-1 means all*/) {
-	length := len(game.building_placing_colddown)
-	if index < 0 || index >= length {
-		for i in 0..<length do tool_colddown_start(i)
-	} else {
-		colddown := &game.building_placing_colddown[index]
-		colddown.time = colddown.duration
-	}
 }
 
 game_draw :: proc(using g: ^Game) {
@@ -370,7 +357,9 @@ game_draw :: proc(using g: ^Game) {
 			},
 			proc(bird: rawptr) {
 				bird := cast(^Bird)bird
-				rl.DrawLineV(bird.pos, bird.destination, {255,0,0, 64})
+				if GAME_DEBUG {
+					rl.DrawLineV(bird.pos, bird.destination, {255,0,0, 64})
+				}
 			},
 			proc(draw: rawptr) {
 			}
@@ -475,18 +464,19 @@ draw_ui :: proc() {
 
 	rect :rl.Rectangle= { 10, viewport.y - card_height - 10, card_width, card_height }
 
-	draw_mode_card("炮塔", "Q", &rect, .Tower, Tower)
-	draw_mode_card("能量泵", "W", &rect, .PowerPump, PowerPump)
+	draw_mode_card(&game.building_placers[Tower], &rect)
+	draw_mode_card(&game.building_placers[PowerPump], &rect)
+	draw_mode_card(&game.building_placers[Minestation], &rect)
 
 	str_mineral := fmt.ctprintf("矿:{} 地块:{}", game.mineral, len(game.land))
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50}, 28, 1, rl.YELLOW)
 
-	draw_mode_card :: proc(name, key: cstring, rect: ^rl.Rectangle, e: PlacingMode, building_type: typeid) {
+	draw_mode_card :: proc(using placer: ^BuildingPlacer, rect: ^rl.Rectangle) {
 		shadow_rect := rect^
 		shadow_rect.x += 8
 		shadow_rect.y += 8
-		selected := game.placing_mode == e
+		selected := game.current_placer == placer
 		rl.DrawRectangleRec(shadow_rect, {0,0,0, 64})
 		if selected {;
 			framer := rect^
@@ -499,8 +489,7 @@ draw_ui :: proc() {
 		rl.DrawRectangleRec(rect^, {60,60,60, 255})
 
 		colddown_rect := rect^
-		colddown := &game.building_placing_colddown[cast(int)e]
-		colddown_rect.height *= 1-cast(f32)(colddown.time/ colddown.duration);
+		colddown_rect.height *= 1-cast(f32)(colddown_time/ colddown);
 		rl.DrawRectangleRec(colddown_rect, {200, 200, 200, 255})
 
 		measure := rl.MeasureTextEx(FONT_DEFAULT, name, 20, 1)
