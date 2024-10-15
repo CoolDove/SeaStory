@@ -39,6 +39,23 @@ BirdWave :: struct {
 	born : rl.Rectangle,
 	target : rl.Rectangle,
 }
+birdgen_is_working :: proc(bg: ^BirdGenerator) -> bool {
+	return bg.wave.time > 0
+}
+birdgen_set :: proc(bg: ^BirdGenerator, count: int, time: f64) {
+	wave : BirdWave
+	if len(game.land) == 0 do return
+	wave.time = auto_cast (rand.int31()%7+10)
+	wave.count = auto_cast (rand.int31()%4+4)
+	x := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
+	y := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
+	wave.born = {x,y, 4,4}
+	l := game.land[rand.int31()%auto_cast len(game.land)]
+	w := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.x, 4)
+	h := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.y, 4)
+	wave.target = {auto_cast l.x-2, auto_cast l.y-2, w, h}
+	bg.wave = wave
+}
 
 birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 	bg.time += delta
@@ -56,18 +73,6 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 			}
 			wave.time = 0
 		}
-	}
-	if wave.time == 0 {
-		if len(game.land) == 0 do return
-		wave.time = auto_cast (rand.int31()%5+7)
-		wave.count = auto_cast (rand.int31()%4+4)
-		x := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
-		y := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
-		wave.born = {x,y, 4,4}
-		l := game.land[rand.int31()%auto_cast len(game.land)]
-		w := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.x, 4)
-		h := cast(f32)math.min(BLOCK_WIDTH-auto_cast l.y, 4)
-		wave.target = {auto_cast l.x-2, auto_cast l.y-2, w, h}
 	}
 }
 

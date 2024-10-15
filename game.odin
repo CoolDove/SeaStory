@@ -26,6 +26,8 @@ Game :: struct {
 	land : [dynamic][2]int,
 	birdgen : BirdGenerator,
 
+	level : int,
+
 	time : f64,
 	// building_placing_colddown : [3]struct{
 	// 	time, duration : f64
@@ -247,7 +249,6 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			game.buildingmap[get_index(b.position.x, b.position.y)] = nil
 			hla.hla_remove_handle(bh)
 			free(b)
-			fmt.printf("building: {}{} die\n", b.position, b.type)
 		}
 	}
 
@@ -261,6 +262,9 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	}
 
 	// bird gen
+	if game.birds.count == 0 && !birdgen_is_working(&g.birdgen) {
+		birdgen_set(&g.birdgen, 1, 7)
+	}
 	birdgen_update(g, &g.birdgen, 1.0/64.0)
 
 	if game.mine_check_interval > 0 {
@@ -484,7 +488,7 @@ draw_ui :: proc() {
 			framer.y -= 4
 			framer.width += 8
 			framer.height += 8
-			rl.DrawRectangleRec(framer, {170, 190, 40, 200})
+			rl.DrawRectangleRec(framer, {40, 20, 40, 200})
 		}
 		rl.DrawRectangleRec(rect^, {200,200,200, 255})
 

@@ -114,3 +114,10 @@ building_get_colddown :: proc(bt: typeid) -> f64 {
 draw_building_hpbar :: proc(using b: ^Building) {
 	draw_hpbar({center.x-0.4, center.y+0.3, 0.8, 0.12}, cast(f32)hitpoint/cast(f32)hitpoint_define, 0.02)
 }
+
+draw_building_nopower :: proc(using b: ^Building) {
+	dest := rl.Rectangle{center.x,center.y, 1,1}
+	shadow := dest; shadow.x += 0.05; shadow.y += 0.05
+	rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, shadow, {0.5,0.5}, 0, {0,0,0, 64})
+	rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, dest, {0.5,0.5}, 0, rl.WHITE)
+}

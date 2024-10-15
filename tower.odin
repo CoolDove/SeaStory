@@ -70,10 +70,7 @@ _Tower_VTable :Building_VTable= {
 				rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness*0.4, {200, 230, 220, 255})
 			}
 		} else {
-			dest := rl.Rectangle{tower.center.x,tower.center.y, 1,1}
-			shadow := dest; shadow.x += 0.05; shadow.y += 0.05
-			rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, shadow, {0.5,0.5}, 0, {0,0,0, 64})
-			rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, dest, {0.5,0.5}, 0, rl.WHITE)
+			draw_building_nopower(tower)
 		}
 		if GAME_DEBUG {
 			rl.DrawTextEx(FONT_DEFAULT, fmt.ctprintf("power: {}", tower.powered), tower.center+{-0.5, 0.4}, 0.4, 0, {0,0,0, 128})

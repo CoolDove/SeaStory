@@ -25,10 +25,13 @@ _Minestation_VTable :Building_VTable= {
 		using hla
 		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
 		using station
-		collect_time += delta
-		if collect_time >= collect_interval {
-			game.mineral += collect_amount
-			collect_time = 0
+		
+		if station.powered <= 0 {
+			collect_time += delta
+			if collect_time >= collect_interval {
+				game.mineral += collect_amount
+				collect_time = 0
+			}
 		}
 	},
 	init = proc(b: ^Building) {
@@ -48,6 +51,9 @@ _Minestation_VTable :Building_VTable= {
 		using hla
 		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
 		draw_building_hpbar(station)
+		if station.powered <= 0 {
+			draw_building_nopower(station)
+		}
 	},
 	_is_place_on_water = proc() -> bool {
 		return true
