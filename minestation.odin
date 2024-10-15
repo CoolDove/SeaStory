@@ -26,7 +26,7 @@ _Minestation_VTable :Building_VTable= {
 		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
 		using station
 		
-		if station.powered <= 0 {
+		if station.powered > 0 {
 			collect_time += delta
 			if collect_time >= collect_interval {
 				game.mineral += collect_amount

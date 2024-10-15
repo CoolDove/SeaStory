@@ -70,6 +70,7 @@ main :: proc() {
 	rl.InitWindow(800, 600, "Minesweeper")
 
 	rl.SetTargetFPS(60)
+	rl.SetExitKey(auto_cast 0)
 
 
 	{// load font
