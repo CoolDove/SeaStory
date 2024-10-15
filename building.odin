@@ -36,7 +36,8 @@ Building_VTable :: struct {
 
 building_init :: proc(b: ^Building) {
 	if b.powered != -1 {// -1 means the building doesn't need power
-		for p in hla.ites_alive_value(&game.buildings) {
+		ite : int
+		for p in hla.ite_alive_value(&game.buildings, &ite) {
 			if p.type == PowerPump {
 				p := cast(^PowerPump)p
 				if linalg.distance(b.center, p.center) < auto_cast p.range {

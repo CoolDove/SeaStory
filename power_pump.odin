@@ -59,7 +59,8 @@ _PowerPump_VTable :Building_VTable= {
 
 	init = proc(b: ^Building) {
 		power_pump := cast(^PowerPump)b
-		for b in hla.ites_alive_value(&game.buildings) {
+		ite : int
+		for b in hla.ite_alive_value(&game.buildings, &ite) {
 			if linalg.distance(b.center, power_pump.center) < auto_cast power_pump.range {
 				b.powered += 1
 			}
@@ -67,9 +68,10 @@ _PowerPump_VTable :Building_VTable= {
 	},
 	release = proc(b: ^Building) {
 		power_pump := cast(^PowerPump)b
-		for b in hla.ites_alive_value(&game.buildings) {
+		ite : int
+		for b in hla.ite_alive_value(&game.buildings, &ite) {
 			if linalg.distance(b.center, power_pump.center) < auto_cast power_pump.range {
-				b.powered -= 1
+				if b.powered != -1 do b.powered -= 1
 			}
 		}
 	},

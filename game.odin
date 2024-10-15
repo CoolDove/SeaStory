@@ -8,6 +8,7 @@ import "core:math/rand"
 import "core:math/noise"
 import "core:math/linalg"
 import "core:math"
+import "core:log"
 import "core:strings"
 import hla "collections/hollow_array"
 import rl "vendor:raylib"
@@ -55,6 +56,7 @@ GameResources :: struct {
 	power_pump_tex : rl.Texture,
 	bird_tex : rl.Texture,
 	no_power_tex : rl.Texture,
+	minestation_tex : rl.Texture,
 }
 
 Position :: struct {
@@ -66,7 +68,7 @@ game_add_bird :: proc(g: ^Game, p: rl.Vector2) -> BirdHandle {
 		pos = p,
 		hitpoint = 100,
 		shoot_interval = 0.8,
-		attack = 10,
+		attack = 5,
 		speed = 1.2,
 	})
 	bird := hla.hla_get_pointer(b)
@@ -126,6 +128,9 @@ game_init :: proc(using g: ^Game) {
 	res.bird_tex = rl.LoadTexture("res/bird.png");
 	res.power_pump_tex = rl.LoadTexture("res/power_pump.png");
 	res.no_power_tex = rl.LoadTexture("res/no_power.png");
+	res.minestation_tex = rl.LoadTexture("res/minestation.png");
+
+	mineral = 400
 
 	buildings = hla.hla_make(^Building, 32)
 
@@ -162,6 +167,11 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		game.placing_mode = .Tower
 	} else if rl.IsKeyReleased(.W) {
 		game.placing_mode = .PowerPump
+	}
+
+	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.D) && rl.IsKeyDown(.LEFT_ALT) {
+		building := game.buildingmap[get_index(hover_cell.x, hover_cell.y)]
+		building.hitpoint -= 100
 	}
 
 	placeable = false
@@ -223,17 +233,18 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	last_position = rl.GetMousePosition()
 
-
 	// ** game logic
-	for bh in hla.ites_alive_handle(&game.buildings) {
+	for bh in hla.ites_alive_handle(&game.buildings) {// building die
 		b := hla.hla_get_value(bh)
 		if b.hitpoint <= 0 {
+			building_release(b)
 			game.buildingmap[get_index(b.position.x, b.position.y)] = nil
 			hla.hla_remove_handle(bh)
+			fmt.printf("building: {}{} die\n", b.position, b.type)
 		}
 	}
 
-	for i := len(game.land)-1; i>-1; i-=1 {
+	for i := len(game.land)-1; i>-1; i-=1 {// land die
 		landp := game.land[i]
 		idx := get_index(landp.x, landp.y)
 		if hitpoint[idx] <= 0 {
@@ -249,7 +260,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		game.mine_check_interval -= delta
 		if game.mine_check_interval <= 0 {
 			game.mine_check_interval = 0.5
-			game.mineral += 2 + cast(int)(cast(f64)len(game.land) * 0.1)
+			game.mineral += 1 + cast(int)(cast(f64)len(game.land) * 0.01)
 		}
 	}
 

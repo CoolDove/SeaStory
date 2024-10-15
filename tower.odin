@@ -4,6 +4,7 @@ import "core:math/rand"
 import "core:math/noise"
 import "core:math/linalg"
 import "core:math"
+import "core:fmt"
 import rl "vendor:raylib"
 import hla "collections/hollow_array"
 
@@ -92,6 +93,9 @@ _tower_extra_draw :: proc(handle: hla._HollowArrayHandle) {
 		shadow := dest; shadow.x += 0.05; shadow.y += 0.05
 		rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, shadow, {0.5,0.5}, 0, {0,0,0, 64})
 		rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, dest, {0.5,0.5}, 0, rl.WHITE)
+	}
+	if GAME_DEBUG {
+		rl.DrawTextEx(FONT_DEFAULT, fmt.ctprintf("power: {}", tower.powered), tower.center+{-0.5, 0.4}, 0.4, 0, {0,0,0, 128})
 	}
 }
 
