@@ -63,6 +63,7 @@ game_add_bird :: proc(g: ^Game, p: rl.Vector2) {
 		pos = p,
 		hitpoint = 100,
 		shoot_interval = 1.0,
+		speed = 1.2,
 	})
 }
 
@@ -118,7 +119,6 @@ game_init :: proc(using g: ^Game) {
 	res.no_power_tex = rl.LoadTexture("res/no_power.png");
 
 	buildings = hla.hla_make(^Building, 32)
-	birdgen.interval = 0.5
 
 	tool_colddown_init()
 	tool_colddown_start()
@@ -287,18 +287,40 @@ game_draw :: proc(using g: ^Game) {
 	rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
 
 	// draw cursor
-	hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
-	rl.DrawRectangleV(hover_cell_corner, {0.9, 0.9}, {255,255,255, 80})
-	if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
+	if in_range(hover_cell.x, hover_cell.y) {
+		hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
+		rl.DrawRectangleV(hover_cell_corner, {0.9, 0.9}, {255,255,255, 80})
+		if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
+	}
+
+	draw_elems := make([dynamic]DrawElem); defer delete(draw_elems)
 
 	for bird in hla.ites_alive_ptr(&g.birds) {
 		x := cast(f32)bird.pos.x
 		y := cast(f32)bird.pos.y
-		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1, 1}, {0,0}, 0, {0,0,0, 64})// shadow
-		rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
+		// rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1, 1}, {0,0}, 0, {0,0,0, 64})// shadow
+		// rl.DrawTexturePro(res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
+		DrawBird :: struct {
+			position: Vec2,
+		}
+		draw := new(DrawBird)
+		draw.position = {x,y}
+		append(&draw_elems, DrawElem{
+			draw,
+			auto_cast y,
+			proc(draw: rawptr) {
+				d := cast(^DrawBird)draw
+				x,y := d.position.x, d.position.y
+				rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1, 1}, {0,0}, 0, {0,0,0, 64})// shadow
+				rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
+			},
+			proc(draw: rawptr) {
+			},
+			proc(draw: rawptr) {
+				free(cast(^DrawBird)draw)
+			}
+		})
 	}
-
-	draw_elems := make([dynamic]DrawElem); defer delete(draw_elems)
 
 	for building_handle in hla.ites_alive_handle(&game.buildings) {
 		handle := new(hla._HollowArrayHandle)
@@ -343,6 +365,8 @@ game_draw :: proc(using g: ^Game) {
 	for e in draw_elems {
 		e.extra_draw(e.data)
 	}
+
+	bird_draw(&game.birdgen)
 
 	draw_cell :: proc(using g: ^Game, x,y: int) {
 		idx := get_index(x,y)

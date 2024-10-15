@@ -7,13 +7,12 @@ import "core:math/linalg"
 import rl "vendor:raylib"
 import hla "collections/hollow_array"
 
-
-
 BirdHandle :: hla.HollowArrayHandle(Bird)
 Bird :: struct {
 	hitpoint : int,
 	pos : Vec2,
 	target : Vec2i,
+	speed : f64,
 	destination : Vec2,
 	dest_time : f64,
 	level : int,
@@ -22,20 +21,36 @@ Bird :: struct {
 }
 
 BirdGenerator :: struct {
-	interval : f64,
+	wave : BirdWave,
 	time : f64,// ms
 }
+
+BirdWave :: struct {
+	count : int,
+	time : f64,
+	born : rl.Rectangle,
+	target : rl.Rectangle,
+}
+
 birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 	bg.time += delta
-	if bg.time >= bg.interval {
-		from := [2]int{auto_cast (rand.uint32()%BLOCK_WIDTH), auto_cast (rand.uint32()%BLOCK_WIDTH)}
-		buffer : [BLOCK_WIDTH*BLOCK_WIDTH]u32
-		if pos, ok := find_empty_cell(g, from, &buffer); ok {
-			x := cast(f32)pos.x
-			y := cast(f32)pos.y
-			game_add_bird(g, {x,y})
+	using bg
+	if wave.time > 0 {
+		wave.time -= delta
+		if wave.time <= 0 {
+			for i in 0..<wave.count {
+				pos :Vec2= {rand.float32()*wave.born.width+wave.born.x, rand.float32()*wave.born.height+wave.born.y}
+				game_add_bird(g, pos)
+			}
+			wave.time = 0
 		}
-		bg.time = 0
+	}
+	if wave.time == 0 {
+		wave.time = auto_cast (rand.int31()%5+7)
+		wave.count = auto_cast (rand.int31()%4+4)
+		x := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
+		y := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
+		wave.born = {x,y, 4,4}
 	}
 }
 
@@ -81,7 +96,7 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 	}
 	if b.dest_time != 0 {
 		dir := linalg.normalize(b.destination - b.pos)
-		step := 2*auto_cast delta
+		step := b.speed*auto_cast delta
 		if auto_cast linalg.distance(b.destination, b.pos) < step {
 			target :Vec2i= {auto_cast b.destination.x, auto_cast b.destination.y}
 			idx := get_index(target.x, target.y)
@@ -96,4 +111,8 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 			b.pos += dir * 2 * auto_cast delta
 		}
 	}
+}
+
+bird_draw :: proc(bg: ^BirdGenerator) {
+	rl.DrawRectangleRec(bg.wave.born, {200, 60,60, 128})
 }
