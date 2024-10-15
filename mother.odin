@@ -21,6 +21,7 @@ _Mother_VTable :Building_VTable= {
 	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
 	},
 	init = proc(b: ^Building) {
+		b.powered = -1
 	},
 	release = proc(b: ^Building) {
 		m := cast(^Mother)b

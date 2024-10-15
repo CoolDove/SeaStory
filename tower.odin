@@ -55,7 +55,13 @@ _Tower_VTable :Building_VTable= {
 		tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
 		tex := game.res.tower_tex
 		height := cast(f32) tex.height
-		rl.DrawCircleLinesV(tower.center, auto_cast tower.range, {255, 100, 100, 128})
+		if GAME_DEBUG {
+			rl.DrawCircleLinesV(tower.center, auto_cast tower.range, {255, 100, 100, 128})
+		}
+		if game.hover_cell == tower.position || rl.IsKeyDown(.LEFT_SHIFT) {
+			rl.DrawCircleV(tower.center, auto_cast tower.range, {200, 100, 80, cast(u8)(64.0*math.abs(math.sin(game.time))+64.0)})
+			rl.DrawCircleLinesV(tower.center, auto_cast tower.range, {255, 100, 100, 128})
+		}
 		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)tower.position.x,cast(f32)tower.position.y, 1, height/32.0}, {0,1}, 0, rl.WHITE)
 	},
 	extra_draw = proc(handle: hla._HollowArrayHandle) {
