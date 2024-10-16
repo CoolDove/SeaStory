@@ -98,8 +98,9 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) -> bool/*alive*/ {
 	v := block[idx]
 	if m == 0 {
 		mask[idx] = FLAG_TOUCHED
-		append(&land, [2]int{x,y})
-		mining[get_index(x,y)] = count_minestations({x,y})
+		pos := Vec2i{x,y}
+		append(&land, pos)
+		mining[get_index(pos)] = count_minestations(pos)
 		hitpoint[idx] = 20
 		if v == 0 {
 			_sweep :: proc(g: ^Game, x,y: int) {
@@ -317,10 +318,13 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				_blow_cell(hover_cell+{0,1})
 				_blow_cell(hover_cell+{1,1})
 				_blow_cell :: proc(p: Vec2i) {
-					if !in_range(p.x, p.y) do return
+					if !in_range(p) do return
 					idx := get_index(p.x, p.y)
 					building := game.buildingmap[get_index(p.x, p.y)]
 					if building != nil do building.hitpoint = 0
+					if game.mask[idx] != FLAG_TOUCHED {
+						sweep(&game, p.x, p.y)
+					}
 					game.hitpoint[idx] = 0
 				}
 			}
@@ -539,9 +543,7 @@ game_draw :: proc(using g: ^Game) {
 			rl.DrawRectangleV(pos+offset, {0.08, 0.7}, {60,50,20, 255})
 		} else if m == FLAG_TOUCHED {
 			if v == ITEM_BOMB {
-				rl.DrawRectangleV(pos, {0.9, 0.9}, {100,100,100,255})
-				rl.DrawRectangleV(pos, {0.8, 0.8}, {80,80,60,255})
-				rl.DrawCircleV(pos+{0.4,0.4}, 0.3, {200, 70, 40, 255})
+				rl.DrawCircleV(pos+{0.5,0.5}, 0.3, {200, 70, 40, 200})
 			} else if v == ITEM_QUESTION {
 				rl.DrawRectangleV(pos, {1,1}, {217, 160, 102, 255})
 				if v != 0 {
@@ -555,9 +557,9 @@ game_draw :: proc(using g: ^Game) {
 					rl.DrawTextEx(rl.GetFontDefault(), fmt.ctprintf("{}", v),
 						pos+{0.2, 0.1}, 0.8, 1, rl.Color{200, 140, 85, 200})
 				}
-				if game.sunken[idx] == -1 {
-					rl.DrawRectangleV(pos, {1,1}, {20, 90, 180, 128})
-				}
+			}
+			if game.sunken[idx] == -1 { // sunken mask
+				rl.DrawRectangleV(pos, {1,1}, {20, 90, 180, 128})
 			}
 		}
 

@@ -35,13 +35,28 @@ GAME_DEBUG : bool = true
 
 FONT_DEFAULT : rl.Font
 
-get_index :: proc(x,y: int) -> int {
+get_index :: proc {
+	get_indexi,
+	get_indexv,
+}
+get_indexi :: proc(x,y: int) -> int {
 	return x+y*(auto_cast BLOCK_WIDTH)
 }
+get_indexv :: proc(pos: Vec2i) -> int {
+	return pos.x+pos.y*(auto_cast BLOCK_WIDTH)
+}
 
-in_range :: proc(x,y: int) -> bool {
+in_range :: proc {
+	in_rangei,
+	in_rangev,
+}
+in_rangei :: proc(x,y: int) -> bool {
 	w :int= cast(int)BLOCK_WIDTH
 	return !(x < 0 || y < 0 || x >= w || y >= w)
+}
+in_rangev :: proc(pos: Vec2i) -> bool {
+	w :int= cast(int)BLOCK_WIDTH
+	return !(pos.x < 0 || pos.y < 0 || pos.x >= w || pos.y >= w)
 }
 
 @(private="file")
