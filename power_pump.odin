@@ -70,5 +70,5 @@ _PowerPump_VTable :Building_VTable= {
 	_is_place_on_water = proc() -> bool {
 		return true
 	},
-	_define_hitpoint = proc() -> int { return 100 }
+	_define_hitpoint = proc() -> int { return 150 }
 }

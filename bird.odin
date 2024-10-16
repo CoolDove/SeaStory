@@ -15,6 +15,7 @@ Bird :: struct {
 	pos : Vec2,
 
 	speed : f64,
+	speed_scaler : f64,
 	destination : Vec2,
 	dest_time : f64,
 	level : int,
@@ -126,9 +127,13 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 		game_kill_bird(g, handle)
 		return
 	}
+
+	if b.speed_scaler < 1.0 {
+		b.speed_scaler += math.min(1, 1 * delta)
+	}
 	if b.dest_time != 0 {
 		dir := linalg.normalize(b.destination - b.pos)
-		step := b.speed*auto_cast delta
+		step := b.speed*b.speed_scaler*auto_cast delta
 		if b.shoot_colddown > 0 {
 			b.shoot_colddown -= delta
 		}
@@ -152,7 +157,7 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 				b.shoot_colddown = b.shoot_interval
 			}
 		} else {
-			b.pos += dir * 2 * auto_cast delta
+			b.pos += dir * auto_cast step
 		}
 	}
 }
@@ -179,6 +184,9 @@ _bird_find_target :: proc(b: ^Bird, pos: Vec2) -> bool {
 		distance := linalg.distance(pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
 		weight := 128 - math.min(cast(int)distance, 128)
 		weight += 2 + b._building_weight_adjust
+
+		if building.type == Wind do weight = math.max(0, weight-10)
+
 		hp_percent := cast(f64)building.hitpoint/cast(f64)building.hitpoint_define
 		if hp_percent < 0.9 do weight += 1
 		if hp_percent < 0.5 do weight += 1
@@ -193,7 +201,7 @@ _bird_find_target :: proc(b: ^Bird, pos: Vec2) -> bool {
 	})
 
 	des := b._candidates_buffer[0]
-	if !des.is_building do b._building_weight_adjust += 1
+	if !des.is_building do b._building_weight_adjust += 2
 	else do b._building_weight_adjust = 0
 	x := des.position.x
 	y := des.position.y

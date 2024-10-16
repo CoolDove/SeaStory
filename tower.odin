@@ -35,7 +35,7 @@ _Tower_VTable :Building_VTable= {
 				tower.target = {}
 			} else if tower.shoot_charge >= tower.shoot_interval {
 				bird := hla.hla_get_pointer(tower.target)
-				bird.hitpoint -= 10
+				bird.hitpoint -= 20
 				tower.shoot_charge = 0
 			}
 		} else {

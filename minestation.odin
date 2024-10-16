@@ -94,11 +94,15 @@ count_minestations :: proc(pos: Vec2i) -> int {
 
 minestation_for_available_cells :: proc(s: ^Minestation, process: proc(p:Vec2i)) {
 	bx, by := s.position.x, s.position.y
+	range := cast(f32)s.range
 	for x:=1; x<2*(s.range+1); x+=1 {
 		X := bx + (1 if x%2==0 else -1) * x/2
 		for y:=1; y<2*(s.range+1); y+=1 {
+			using linalg
 			Y := by + (1 if y%2==0 else -1) * y/2
-			if in_range(X,Y) && linalg.distance(s.center, Vec2{cast(f32)X+0.5,cast(f32)Y+0.5}) <= cast(f32)s.range {
+			idx := get_index(X,Y)
+			center := Vec2{cast(f32)X+0.5,cast(f32)Y+0.5}
+			if game.sunken[idx] == 0 && in_range(X,Y) && distance(s.center, center) <= range {
 				process({X,Y})
 			}
 		}

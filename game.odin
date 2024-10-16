@@ -26,7 +26,7 @@ Game :: struct {
 	buildings : hla.HollowArray(^Building),
 	birds : hla.HollowArray(Bird),
 
-	land : [dynamic][2]int,
+	land : [dynamic]Vec2i,
 	birdgen : BirdGenerator,
 
 	level : int,
@@ -67,6 +67,10 @@ GameResources :: struct {
 	no_power_tex : rl.Texture,
 	minestation_tex : rl.Texture,
 	mother_tex : rl.Texture,
+	wind_off_tex : rl.Texture,
+	wind_on_tex : rl.Texture,
+
+	mask_slash : rl.Texture,
 }
 
 Position :: struct {
@@ -80,6 +84,7 @@ game_add_bird :: proc(g: ^Game, p: rl.Vector2) -> BirdHandle {
 		shoot_interval = 0.8,
 		attack = 6,
 		speed = 1.2,
+		speed_scaler = 1.0,
 	})
 	bird := hla.hla_get_pointer(b)
 	bird._candidates_buffer = make([dynamic]_BirdTargetCandidate, 128)
@@ -176,6 +181,9 @@ game_init :: proc(g: ^Game) {
 	res.no_power_tex = rl.LoadTexture("res/no_power.png");
 	res.minestation_tex = rl.LoadTexture("res/minestation.png");
 	res.mother_tex = rl.LoadTexture("res/mother.png");
+	res.mask_slash = rl.LoadTexture("res/mask_slash.png")
+	res.wind_off_tex = rl.LoadTexture("res/wind_off.png")
+	res.wind_on_tex = rl.LoadTexture("res/wind_on.png")
 
 	mineral = 500
 	mine_interval = 1
@@ -187,6 +195,7 @@ game_init :: proc(g: ^Game) {
 	_register_building_placer(Tower, "炮塔", "Q")
 	_register_building_placer(PowerPump, "能量泵", "W")
 	_register_building_placer(Minestation, "采集站", "E")
+	_register_building_placer(Wind, "风墙", "R")
 
 	_register_building_placer :: proc(t: typeid, name, key : cstring) {
 		c := building_get_colddown(t)
@@ -266,6 +275,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			game.current_placer = &game.building_placers[PowerPump]
 		} else if rl.IsKeyReleased(.E) {
 			game.current_placer = &game.building_placers[Minestation]
+		} else if rl.IsKeyReleased(.R) {
+			game.current_placer = &game.building_placers[Wind]
 		}
 	}
 
@@ -283,11 +294,14 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		p := game.current_placer
 		is_water_place := _building_vtable(p.building_type)._is_place_on_water()
 		idx := get_index(hover_cell.x, hover_cell.y)
-		placeable = in_range(hover_cell.x, hover_cell.y) && mask[idx] == FLAG_TOUCHED
-		if is_water_place do placeable = !placeable
-		placeable &= building_placers[p.building_type].colddown_time <= 0
-		placeable &= building_get_cost(p.building_type) <= game.mineral
-		placeable &= game.sunken[idx] == 0
+		if in_range(hover_cell.x, hover_cell.y) {
+			placeable = mask[idx] == FLAG_TOUCHED
+			if is_water_place do placeable = !placeable
+			placeable &= game.buildingmap[idx] == nil
+			placeable &= building_placers[p.building_type].colddown_time <= 0
+			placeable &= building_get_cost(p.building_type) <= game.mineral
+			placeable &= game.sunken[idx] == 0
+		}
 	}
 
 	if rl.IsMouseButtonReleased(.RIGHT) {// place building
@@ -361,8 +375,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		idx := get_index(landp.x, landp.y)
 		if hitpoint[idx] <= 0 {
 			ordered_remove(&game.land, i)
-			// game.mask[idx] = 0
 			game.sunken[idx] = -1
+			game.mining[idx] = 0
 		}
 	}
 
@@ -559,7 +573,8 @@ game_draw :: proc(using g: ^Game) {
 				}
 			}
 			if game.sunken[idx] == -1 { // sunken mask
-				rl.DrawRectangleV(pos, {1,1}, {20, 90, 180, 128})
+				// rl.DrawRectangleV(pos, {1,1}, {20, 90, 180, 128})
+				rl.DrawTexturePro(res.mask_slash, {0,0,32,32}, {pos.x,pos.y,1,1}, {0,0}, 0, {20, 90, 180, 64})
 			}
 		}
 
@@ -580,13 +595,14 @@ draw_ui :: proc() {
 	draw_mode_card(&game.building_placers[Tower], &rect)
 	draw_mode_card(&game.building_placers[PowerPump], &rect)
 	draw_mode_card(&game.building_placers[Minestation], &rect)
+	draw_mode_card(&game.building_placers[Wind], &rect)
 
 	str_mineral := fmt.ctprintf("矿:{} (+{}/s) 地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50}, 28, 1, rl.YELLOW)
 
 	if game.birdgen.wave.time > 0 {
-		str_enemy := fmt.ctprintf("下一波敌袭: {:.1f} 秒后出现\n", game.birdgen.wave.time)
+		str_enemy := fmt.ctprintf("第{}波敌袭: {:.1f} 秒后出现\n", game.level, game.birdgen.wave.time)
 		rl.DrawTextEx(FONT_DEFAULT, str_enemy, {10, 80}, 42, 1, {200,30,30, 128})
 	}
 

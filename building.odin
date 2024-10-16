@@ -56,6 +56,7 @@ _building_vtable :: proc(t: typeid) -> ^Building_VTable {
 	if t == PowerPump do return &_PowerPump_VTable
 	if t == Minestation do return &_Minestation_VTable
 	if t == Mother do return &_Mother_VTable
+	if t == Wind do return &_Wind_VTable
 	return nil
 }
 
@@ -106,6 +107,7 @@ building_get_cost :: proc(bt: typeid) -> int {
 	if bt == Tower do return 200
 	if bt == PowerPump do return 100
 	if bt == Minestation do return 100
+	if bt == Wind do return 50
 	return 0
 }
 // second
@@ -113,6 +115,7 @@ building_get_colddown :: proc(bt: typeid) -> f64 {
 	if bt == Tower do return 5
 	if bt == PowerPump do return 3
 	if bt == Minestation do return 3
+	if bt == Wind do return 1
 	return 0
 }
 
