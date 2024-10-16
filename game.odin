@@ -18,6 +18,7 @@ Game :: struct {
 	block : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
 	mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
 	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]int,
+	mining : [BLOCK_WIDTH*BLOCK_WIDTH]int,
 	buildingmap : [BLOCK_WIDTH*BLOCK_WIDTH]^Building,
 	dead : bool,
 
@@ -30,14 +31,12 @@ Game :: struct {
 	level : int,
 
 	time : f64,
-	// building_placing_colddown : [3]struct{
-	// 	time, duration : f64
-	// },// use PlacingMode as the index
 
-	// gameplay resources
+	// gameplay
 	mineral : int,
-
-	mine_check_interval : f64, // check per 0.5s
+	mine_interval : f64,
+	mine_time : f64,
+	mining_count : int, // update per second
 
 	res : GameResources,
 	using operation : GameOperation,
@@ -99,6 +98,7 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) -> bool/*alive*/ {
 	if m == 0 {
 		mask[idx] = FLAG_TOUCHED
 		append(&land, [2]int{x,y})
+		mining[get_index(x,y)] = count_minestations({x,y})
 		hitpoint[idx] = 20
 		if v == 0 {
 			_sweep :: proc(g: ^Game, x,y: int) {
@@ -130,7 +130,6 @@ mark_toggle :: proc(using g: ^Game, x,y : int) {
 		mask[idx] = 0
 	}
 }
-
 
 game_init :: proc(g: ^Game) {
 	// generate map
@@ -176,12 +175,11 @@ game_init :: proc(g: ^Game) {
 	res.minestation_tex = rl.LoadTexture("res/minestation.png");
 	res.mother_tex = rl.LoadTexture("res/mother.png");
 
-	mineral = 400
+	mineral = 500
+	mine_interval = 1
 
 	buildings = hla.hla_make(^Building, 32)
 	birds = hla.hla_make(Bird, 16)
-
-	mine_check_interval = 0.5
 
 	building_placers = make(map[typeid]BuildingPlacer)
 	_register_building_placer(Tower, "炮塔", "Q")
@@ -356,19 +354,25 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		}
 	}
 
+	// ** mining
+	if mine_time >= mine_interval {
+		mining_count = 0
+		for i in land {
+			if mining[get_index(i.x,i.y)] > 0 do mining_count += 1
+		}
+		mineral += 1+mining_count / 10
+		mine_time = 0
+	} else {
+		mine_time += delta
+	}
+
+
 	// bird gen
 	if game.birds.count == 0 && !birdgen_is_working(&g.birdgen) {
-		birdgen_set(&g.birdgen, 1, 7)
+		birdgen_set(&g.birdgen, 1+2*game.level, math.max(7-0.5*cast(f64)level,0) - 1)
+		game.level += 1
 	}
-	birdgen_update(g, &g.birdgen, 1.0/64.0)
-
-	if game.mine_check_interval > 0 {
-		game.mine_check_interval -= delta
-		if game.mine_check_interval <= 0 {
-			game.mine_check_interval = 0.5
-			game.mineral += 1 + cast(int)(cast(f64)len(game.land) * 0.01)
-		}
-	}
+	birdgen_update(g, &g.birdgen, 1.0/60.0)
 
 	for building_handle in hla.ites_alive_handle(&game.buildings) {
 		building := hla.hla_get_pointer(building_handle)^
@@ -553,6 +557,10 @@ game_draw :: proc(using g: ^Game) {
 				}
 			}
 		}
+
+		if (rl.IsKeyDown(.LEFT_ALT) || GAME_DEBUG) && mask[idx] == FLAG_TOUCHED && mining[idx]>0 {
+			rl.DrawCircleV(pos+{0.5,0.5}, auto_cast(0.05 * math.abs(math.sin(game.time*2)) + 0.1), {40,60,180, 80})
+		}
 	}
 }
 
@@ -568,7 +576,7 @@ draw_ui :: proc() {
 	draw_mode_card(&game.building_placers[PowerPump], &rect)
 	draw_mode_card(&game.building_placers[Minestation], &rect)
 
-	str_mineral := fmt.ctprintf("矿:{} 地块:{}", game.mineral, len(game.land))
+	str_mineral := fmt.ctprintf("矿:{} (+{}/s) 地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50}, 28, 1, rl.YELLOW)
 

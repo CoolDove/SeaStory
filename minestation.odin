@@ -14,6 +14,9 @@ import rl "vendor:raylib"
 
 Minestation :: struct {
 	using _ : Building,
+
+	_poweron : bool,
+	range : int,
 	collect_interval : f64,
 	collect_time : f64,
 	collect_amount : int,
@@ -27,20 +30,39 @@ _Minestation_VTable :Building_VTable= {
 		using station
 		if !building_need_bomb_check(station) do return
 		
-		if station.powered > 0 {
-			collect_time += delta
-			if collect_time >= collect_interval {
-				game.mineral += collect_amount
-				collect_time = 0
-			}
+		// if station.powered > 0 {
+		// 	collect_time += delta
+		// 	if collect_time >= collect_interval {
+		// 		game.mineral += collect_amount
+		// 		collect_time = 0
+		// 	}
+		// }
+		poweron :bool= station.powered > 0
+		if !_poweron && poweron {
+			minestation_for_available_cells(station, proc(p: Vec2i) {
+				game.mining[get_index(p.x, p.y)] += 1
+			})
 		}
+		if _poweron && !poweron {
+			minestation_for_available_cells(station, proc(p: Vec2i) {
+				game.mining[get_index(p.x, p.y)] -= 1
+			})
+		}
+		_poweron = poweron
 	},
 	init = proc(b: ^Building) {
 		station := cast(^Minestation)b
-		station.collect_interval = 1
-		station.collect_amount = 5
+		station.range = 4
 	},
-	release = Building_VTable_Empty.release,
+	release = proc(b: ^Building) {
+		station := cast(^Minestation)b
+		bx, by := b.position.x, b.position.y
+		if station._poweron {
+			minestation_for_available_cells(station, proc(p: Vec2i) {
+				game.mining[get_index(p.x, p.y)] -= 1
+			})
+		}
+	},
 	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
@@ -60,4 +82,33 @@ _Minestation_VTable :Building_VTable= {
 		return true
 	},
 	_define_hitpoint = proc() -> int { return 80 }
+}
+
+// Count how many minestations are available for the cell
+count_minestations :: proc(pos: Vec2i) -> int {
+	ite : int
+	count : int
+	for b in hla.ite_alive_value(&game.buildings, &ite) {
+		if b.type == Minestation {
+			station := cast(^Minestation)b
+			if !station._poweron do continue
+			if linalg.distance(b.center, Vec2{cast(f32)pos.x+0.5,cast(f32)pos.y+0.5}) <= cast(f32)station.range {
+				count += 1
+			}
+		}
+	}
+	return count
+}
+
+minestation_for_available_cells :: proc(s: ^Minestation, process: proc(p:Vec2i)) {
+	bx, by := s.position.x, s.position.y
+	for x:=1; x<2*(s.range+1); x+=1 {
+		X := bx + (1 if x%2==0 else -1) * x/2
+		for y:=1; y<2*(s.range+1); y+=1 {
+			Y := by + (1 if y%2==0 else -1) * y/2
+			if in_range(X,Y) && linalg.distance(s.center, Vec2{cast(f32)X+0.5,cast(f32)Y+0.5}) <= cast(f32)s.range {
+				process({X,Y})
+			}
+		}
+	}
 }

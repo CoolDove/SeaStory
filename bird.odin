@@ -176,8 +176,6 @@ _bird_find_target :: proc(b: ^Bird, pos: Vec2) -> bool {
 		distance := linalg.distance(pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
 		weight := 128 - math.min(cast(int)distance, 128)
 		weight += 3
-		// if building.type == Mother do weight += 1
-		// if building.type == PowerPump do weight += 1
 		hp_percent := cast(f64)building.hitpoint/cast(f64)building.hitpoint_define
 		if hp_percent < 0.9 do weight += 1
 		if hp_percent < 0.5 do weight += 1

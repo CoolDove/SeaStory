@@ -49,7 +49,7 @@ _PowerPump_VTable :Building_VTable= {
 	},
 	init = proc(b: ^Building) {
 		power_pump := cast(^PowerPump)b
-		power_pump.range = 6
+		power_pump.range = 5
 		ite : int
 		for b in hla.ite_alive_value(&game.buildings, &ite) {
 			if b.powered < 0 || b.position == power_pump.position do continue
