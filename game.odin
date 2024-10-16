@@ -402,12 +402,6 @@ game_update :: proc(using g: ^Game, delta: f64) {
 }
 
 game_draw :: proc(using g: ^Game) {
-	// grid_color := rl.Color{68,160,156,128}
-	// for i in 0..=BLOCK_WIDTH {
-	// 	rl.DrawLineEx({auto_cast i, 0}, {auto_cast i, auto_cast BLOCK_WIDTH}, 0.1, grid_color)
-	// 	rl.DrawLineEx({0, auto_cast i}, {auto_cast BLOCK_WIDTH, auto_cast i}, 0.1, grid_color)
-	// }
-
 	for x in 0..<BLOCK_WIDTH {
 		for y in 0..<BLOCK_WIDTH {
 			pos := rl.Vector2{cast(f32)x,cast(f32)y}

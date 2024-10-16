@@ -21,9 +21,13 @@ Bird :: struct {
 	attack : int,// how much damage one shoot
 	shoot_interval : f64,
 	shoot_colddown : f64,
-	_candidates_buffer : [dynamic]_BirdTargetCandidate
+	_candidates_buffer : [dynamic]_BirdTargetCandidate,
+
+	// ai
+	_building_weight_adjust : int,
 }
 _BirdTargetCandidate :: struct {
+	is_building : bool,
 	position : Vec2i,
 	weight : int,
 }
@@ -169,16 +173,16 @@ _bird_find_target :: proc(b: ^Bird, pos: Vec2) -> bool {
 	for l in game.land {
 		distance := linalg.distance(pos, Vec2{auto_cast l.x, auto_cast l.y});
 		weight := 128 - math.min(cast(int)distance, 128)
-		append(&b._candidates_buffer, _BirdTargetCandidate{ l, weight })
+		append(&b._candidates_buffer, _BirdTargetCandidate{ false, l, weight })
 	}
 	for building in hla.ites_alive_value(&game.buildings) {
 		distance := linalg.distance(pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
 		weight := 128 - math.min(cast(int)distance, 128)
-		weight += 3
+		weight += 2 + b._building_weight_adjust
 		hp_percent := cast(f64)building.hitpoint/cast(f64)building.hitpoint_define
 		if hp_percent < 0.9 do weight += 1
 		if hp_percent < 0.5 do weight += 1
-		append(&b._candidates_buffer, _BirdTargetCandidate{ building.position, weight })
+		append(&b._candidates_buffer, _BirdTargetCandidate{ true, building.position, weight })
 	}
 	if len(b._candidates_buffer) == 0 do return false
 
@@ -189,6 +193,8 @@ _bird_find_target :: proc(b: ^Bird, pos: Vec2) -> bool {
 	})
 
 	des := b._candidates_buffer[0]
+	if !des.is_building do b._building_weight_adjust += 1
+	else do b._building_weight_adjust = 0
 	x := des.position.x
 	y := des.position.y
 	b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y + rand.float32()*0.1}
