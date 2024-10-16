@@ -131,6 +131,7 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) -> bool/*alive*/ {
 }
 
 mark_toggle :: proc(using g: ^Game, x,y : int) {
+	if !in_range(x,y) do return
 	idx := get_index(x,y)
 	if mask[idx] == 0 {
 		mask[idx] = FLAG_MARKED
@@ -558,6 +559,7 @@ game_draw :: proc(using g: ^Game) {
 		if m == 0 {
 			rl.DrawRectangleLinesEx(rl.Rectangle{pos.x, pos.y, 1,1}, 0.1, {0,60,155, 32})
 		} else if m == FLAG_MARKED {
+			rl.DrawRectangleLinesEx(rl.Rectangle{pos.x, pos.y, 1,1}, 0.1, {0,60,155, 32})
 			// draw flag
 			triangle := [3]rl.Vector2{ {0,0}, {0,0.4}, {0.4,0.2} }
 			offset := rl.Vector2{0.3, 0.1}
@@ -640,7 +642,9 @@ draw_ui :: proc() {
 		rl.DrawRectangleRec(rect^, {200,200,200, 255})
 
 		measure := rl.MeasureTextEx(FONT_DEFAULT, name, 20, 1)
-		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x+0.5*rect.width-0.5*measure.x, rect.y} + {0, measure.y - 20}, 20, 1, rl.BLACK)
+
+		is_water_place := _building_vtable(building_type)._is_place_on_water()
+		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x+0.5*rect.width-0.5*measure.x, rect.y} + {0, measure.y - 20}, 20, 1, rl.BLUE if is_water_place else rl.BLACK)
 
 		measure = rl.MeasureTextEx(FONT_DEFAULT, key, 20, 1)
 		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x+rect.width-measure.x, rect.y + rect.height - 20}, 20, 1, rl.GRAY)
