@@ -87,10 +87,10 @@ main :: proc() {
 
 	rl.SetConfigFlags({rl.ConfigFlag.WINDOW_RESIZABLE})
 	rl.InitWindow(800, 600, "Minesweeper")
+	rl.InitAudioDevice()
 
 	rl.SetTargetFPS(60)
 	rl.SetExitKey(auto_cast 0)
-
 
 	{// load font
 		runes := utf8.string_to_runes(_data_charsheet, context.temp_allocator)
@@ -133,6 +133,7 @@ main :: proc() {
 	}
 	game_release(&game)
 
+	rl.CloseAudioDevice()
 	rl.CloseWindow()
 }
 

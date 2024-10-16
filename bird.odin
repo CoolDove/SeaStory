@@ -77,6 +77,7 @@ bird_init :: proc(type: typeid, bird: ^Bird) {
 	bird.type = type
 	bird.vtable = _bird_vtable(type)
 	bird->init()
+	assert(type_info_of(type).size<= size_of(Bird), fmt.tprintf("Invalid bird type: {}. Bigger than `Bird`.", bird))
 }
 
 _bird_vtable :: proc(t: typeid) -> ^Bird_VTable {

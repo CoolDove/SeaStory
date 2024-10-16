@@ -75,6 +75,10 @@ GameResources :: struct {
 	probe_tex : rl.Texture,
 
 	mask_slash : rl.Texture,
+
+	select_sfx : rl.Sound,
+	escape_sfx : rl.Sound,
+	error_sfx : rl.Sound,
 }
 
 Position :: struct {
@@ -197,6 +201,10 @@ game_init :: proc(g: ^Game) {
 	res.wind_on_tex = rl.LoadTexture("res/wind_on.png")
 	res.probe_tex = rl.LoadTexture("res/probe.png")
 
+	res.select_sfx = rl.LoadSound("res/select_sfx.mp3")
+	res.escape_sfx = rl.LoadSound("res/escape_sfx.mp3")
+	res.error_sfx = rl.LoadSound("res/error_sfx.mp3")
+
 	mine_interval = 1
 
 	buildings = hla.hla_make(^Building, 32)
@@ -252,6 +260,21 @@ game_release :: proc(using g: ^Game) {
 	delete(game.building_placers)
 	delete(game.land)
 	pool.release(&game.birds_ai_buffer_pool)
+
+	rl.UnloadTexture(res.tower_tex)
+	rl.UnloadTexture(res.bird_tex)
+	rl.UnloadTexture(res.power_pump_tex)
+	rl.UnloadTexture(res.no_power_tex)
+	rl.UnloadTexture(res.minestation_tex)
+	rl.UnloadTexture(res.mother_tex)
+	rl.UnloadTexture(res.mask_slash)
+	rl.UnloadTexture(res.wind_off_tex)
+	rl.UnloadTexture(res.wind_on_tex)
+	rl.UnloadTexture(res.probe_tex)
+
+	rl.UnloadSound(res.select_sfx)
+	rl.UnloadSound(res.escape_sfx)
+	rl.UnloadSound(res.error_sfx)
 }
 
 _game_update_dead :: proc(delta: f64) {
@@ -293,17 +316,23 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	if rl.IsKeyReleased(.ESCAPE) {
 		game.current_placer = nil
+		rl.PlaySound(res.escape_sfx)
 	} else {
 		if rl.IsKeyReleased(.Q) {
 			game.current_placer = &game.building_placers[Tower]
+			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.W) {
 			game.current_placer = &game.building_placers[PowerPump]
+			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.E) {
 			game.current_placer = &game.building_placers[Minestation]
+			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.R) {
 			game.current_placer = &game.building_placers[Wind]
+			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.A) {
 			game.current_placer = &game.building_placers[Probe]
+			rl.PlaySound(res.select_sfx)
 		}
 	}
 
@@ -339,6 +368,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
 			game.mineral -= building_get_cost(current_placer.building_type);
 			current_placer.colddown_time = current_placer.colddown // reset colddown
+			rl.PlaySound(res.select_sfx)
 		} else {
 			mark_toggle(&game, hover_cell.x, hover_cell.y)
 		}
@@ -349,6 +379,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		if in_range(x, y) && game.buildingmap[get_index(x, y)] == nil {
 			// ** sweep
 			if !sweep(&game, x, y) {
+				rl.PlaySound(res.error_sfx)
 				_blow_cell(hover_cell+{-1,-1})
 				_blow_cell(hover_cell+{0,-1})
 				_blow_cell(hover_cell+{1,-1})
