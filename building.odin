@@ -57,6 +57,7 @@ _building_vtable :: proc(t: typeid) -> ^Building_VTable {
 	if t == Minestation do return &_Minestation_VTable
 	if t == Mother do return &_Mother_VTable
 	if t == Wind do return &_Wind_VTable
+	if t == Probe do return &_Probe_VTable
 	return nil
 }
 
@@ -104,18 +105,20 @@ building_release :: proc(b: ^Building) {
 }
 
 building_get_cost :: proc(bt: typeid) -> int {
-	if bt == Tower do return 200
+	if bt == Tower do return 180
 	if bt == PowerPump do return 100
 	if bt == Minestation do return 100
 	if bt == Wind do return 50
+	if bt == Probe do return 50
 	return 0
 }
 // second
 building_get_colddown :: proc(bt: typeid) -> f64 {
 	if bt == Tower do return 5
 	if bt == PowerPump do return 3
-	if bt == Minestation do return 3
+	if bt == Minestation do return 6
 	if bt == Wind do return 1
+	if bt == Probe do return 20
 	return 0
 }
 
@@ -135,6 +138,7 @@ draw_building_hpbar :: proc(using b: ^Building) {
 draw_building_nopower :: proc(using b: ^Building) {
 	dest := rl.Rectangle{center.x,center.y, 1,1}
 	shadow := dest; shadow.x += 0.05; shadow.y += 0.05
-	rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, shadow, {0.5,0.5}, 0, {0,0,0, 64})
-	rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, dest, {0.5,0.5}, 0, rl.WHITE)
+	alpha := math.abs(math.sin(game.time))
+	rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, shadow, {0.5,0.5}, 0, {0,0,0, auto_cast (64.0*alpha)})
+	rl.DrawTexturePro(game.res.no_power_tex, {0,0,32,32}, dest, {0.5,0.5}, 0, {255,255,255, auto_cast (255.0*alpha)})
 }

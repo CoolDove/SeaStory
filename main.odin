@@ -31,7 +31,11 @@ Vec2 :: rl.Vector2
 Vec2i :: [2]int
 
 
-GAME_DEBUG : bool = true
+when ODIN_DEBUG {
+	GAME_DEBUG : bool = true
+} else {
+	GAME_DEBUG : bool = false
+}
 
 FONT_DEFAULT : rl.Font
 

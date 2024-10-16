@@ -69,6 +69,7 @@ GameResources :: struct {
 	mother_tex : rl.Texture,
 	wind_off_tex : rl.Texture,
 	wind_on_tex : rl.Texture,
+	probe_tex : rl.Texture,
 
 	mask_slash : rl.Texture,
 }
@@ -184,6 +185,7 @@ game_init :: proc(g: ^Game) {
 	res.mask_slash = rl.LoadTexture("res/mask_slash.png")
 	res.wind_off_tex = rl.LoadTexture("res/wind_off.png")
 	res.wind_on_tex = rl.LoadTexture("res/wind_on.png")
+	res.probe_tex = rl.LoadTexture("res/probe.png")
 
 	mineral = 500
 	mine_interval = 1
@@ -196,6 +198,7 @@ game_init :: proc(g: ^Game) {
 	_register_building_placer(PowerPump, "能量泵", "W")
 	_register_building_placer(Minestation, "采集站", "E")
 	_register_building_placer(Wind, "风墙", "R")
+	_register_building_placer(Probe, "探针", "A")
 
 	_register_building_placer :: proc(t: typeid, name, key : cstring) {
 		c := building_get_colddown(t)
@@ -250,6 +253,16 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		_game_update_dead(delta)
 		return
 	}
+
+	if GAME_DEBUG {
+		if rl.IsKeyDown(.F2) {
+			for _, &placer in game.building_placers {
+				placer.colddown_time -= 1
+				if placer.colddown_time < 0 do placer.colddown_time = 0
+			}
+		}
+	}
+
 	hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 	hover_cell = {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
 
@@ -277,6 +290,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			game.current_placer = &game.building_placers[Minestation]
 		} else if rl.IsKeyReleased(.R) {
 			game.current_placer = &game.building_placers[Wind]
+		} else if rl.IsKeyReleased(.A) {
+			game.current_placer = &game.building_placers[Probe]
 		}
 	}
 
@@ -596,6 +611,8 @@ draw_ui :: proc() {
 	draw_mode_card(&game.building_placers[PowerPump], &rect)
 	draw_mode_card(&game.building_placers[Minestation], &rect)
 	draw_mode_card(&game.building_placers[Wind], &rect)
+	rect.x += 15
+	draw_mode_card(&game.building_placers[Probe], &rect)
 
 	str_mineral := fmt.ctprintf("矿:{} (+{}/s) 地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
