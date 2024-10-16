@@ -14,14 +14,33 @@ import rl "vendor:raylib"
 
 Mother :: struct {
 	using _ : Building,
+	_hitpoint_last : int,
+	_recover_timer : f64,
 }
 
 @private
 _Mother_VTable :Building_VTable= {
 	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
+		using hla
+		m := hla_get_value(transmute(hla.HollowArrayHandle(^Mother))handle)
+		if m._recover_timer > 0 {
+			m._recover_timer -= delta
+		}
+		if m._hitpoint_last <= m.hitpoint {
+			if m._recover_timer <= 0 {
+				m.hitpoint += 10
+				m.hitpoint = math.min(m.hitpoint, m.hitpoint_define)
+				m._recover_timer = 1
+			}
+		} else {
+			m._recover_timer = 3
+		}
+		m._hitpoint_last = m.hitpoint
 	},
 	init = proc(b: ^Building) {
 		b.powered = -1
+		m := cast(^Mother)b
+		m._hitpoint_last = m.hitpoint
 	},
 	release = proc(b: ^Building) {
 		m := cast(^Mother)b
