@@ -142,7 +142,6 @@ bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
 						g.hitpoint[idx] -= b.attack
 					}
 					if g.hitpoint[idx] <= 0.0 {
-						g.mask[idx] = 0
 						b.dest_time = 0
 					}
 				}

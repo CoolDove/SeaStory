@@ -29,14 +29,6 @@ _Minestation_VTable :Building_VTable= {
 		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
 		using station
 		if !building_need_bomb_check(station) do return
-		
-		// if station.powered > 0 {
-		// 	collect_time += delta
-		// 	if collect_time >= collect_interval {
-		// 		game.mineral += collect_amount
-		// 		collect_time = 0
-		// 	}
-		// }
 		poweron :bool= station.powered > 0
 		if !_poweron && poweron {
 			minestation_for_available_cells(station, proc(p: Vec2i) {

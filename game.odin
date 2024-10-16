@@ -19,6 +19,7 @@ Game :: struct {
 	mask : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
 	hitpoint : [BLOCK_WIDTH*BLOCK_WIDTH]int,
 	mining : [BLOCK_WIDTH*BLOCK_WIDTH]int,
+	sunken : [BLOCK_WIDTH*BLOCK_WIDTH]int, // 0: not sunken, -1: sunken, other: recovering
 	buildingmap : [BLOCK_WIDTH*BLOCK_WIDTH]^Building,
 	dead : bool,
 
@@ -268,18 +269,24 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	}
 
 	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.D) && rl.IsKeyDown(.LEFT_ALT) {
-		building := game.buildingmap[get_index(hover_cell.x, hover_cell.y)]
+		idx := get_index(hover_cell.x, hover_cell.y)
+		building := game.buildingmap[idx]
 		if building != nil do building.hitpoint -= 100
+		else if mask[idx] == FLAG_TOUCHED && sunken[idx] == 0 {
+			hitpoint[idx] -= 10
+		}
 	}
 
 	placeable = false
 	if game.current_placer != nil {
 		p := game.current_placer
 		is_water_place := _building_vtable(p.building_type)._is_place_on_water()
-		placeable = in_range(hover_cell.x, hover_cell.y) && mask[get_index(hover_cell.x, hover_cell.y)] == FLAG_TOUCHED
+		idx := get_index(hover_cell.x, hover_cell.y)
+		placeable = in_range(hover_cell.x, hover_cell.y) && mask[idx] == FLAG_TOUCHED
 		if is_water_place do placeable = !placeable
 		placeable &= building_placers[p.building_type].colddown_time <= 0
 		placeable &= building_get_cost(p.building_type) <= game.mineral
+		placeable &= game.sunken[idx] == 0
 	}
 
 	if rl.IsMouseButtonReleased(.RIGHT) {// place building
@@ -350,7 +357,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		idx := get_index(landp.x, landp.y)
 		if hitpoint[idx] <= 0 {
 			ordered_remove(&game.land, i)
-			game.mask[idx] = 0
+			// game.mask[idx] = 0
+			game.sunken[idx] = -1
 		}
 	}
 
@@ -394,11 +402,11 @@ game_update :: proc(using g: ^Game, delta: f64) {
 }
 
 game_draw :: proc(using g: ^Game) {
-	grid_color := rl.Color{68,160,156,128}
-	for i in 0..=BLOCK_WIDTH {
-		rl.DrawLineEx({auto_cast i, 0}, {auto_cast i, auto_cast BLOCK_WIDTH}, 0.1, grid_color)
-		rl.DrawLineEx({0, auto_cast i}, {auto_cast BLOCK_WIDTH, auto_cast i}, 0.1, grid_color)
-	}
+	// grid_color := rl.Color{68,160,156,128}
+	// for i in 0..=BLOCK_WIDTH {
+	// 	rl.DrawLineEx({auto_cast i, 0}, {auto_cast i, auto_cast BLOCK_WIDTH}, 0.1, grid_color)
+	// 	rl.DrawLineEx({0, auto_cast i}, {auto_cast BLOCK_WIDTH, auto_cast i}, 0.1, grid_color)
+	// }
 
 	for x in 0..<BLOCK_WIDTH {
 		for y in 0..<BLOCK_WIDTH {
@@ -433,7 +441,7 @@ game_draw :: proc(using g: ^Game) {
 	// draw cursor
 	if in_range(hover_cell.x, hover_cell.y) {
 		hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
-		rl.DrawRectangleV(hover_cell_corner, {0.9, 0.9}, {255,255,255, 80})
+		rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
 		if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
 	}
 
@@ -521,11 +529,8 @@ game_draw :: proc(using g: ^Game) {
 		v,m := block[idx], mask[idx]
 		pos :rl.Vector2= {cast(f32)x,cast(f32)y}
 		if m == 0 {
-			// rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
-			// rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
+			rl.DrawRectangleLinesEx(rl.Rectangle{pos.x, pos.y, 1,1}, 0.1, {0,60,155, 32})
 		} else if m == FLAG_MARKED {
-			// rl.DrawRectangleV(pos, {0.9, 0.9}, {155,155,155,255})
-			// rl.DrawRectangleV(pos, {0.8, 0.8}, {200,200,200,255})
 			// draw flag
 			triangle := [3]rl.Vector2{ {0,0}, {0,0.4}, {0.4,0.2} }
 			offset := rl.Vector2{0.3, 0.1}
@@ -550,10 +555,14 @@ game_draw :: proc(using g: ^Game) {
 						pos+{0.2, 0.1}, 0.8, 1, rl.Color{200, 190, 40, 200})
 				}
 			} else {
+				// draw land
 				rl.DrawRectangleV(pos, {1,1}, {217, 160, 102, 255})
 				if v != 0 {
 					rl.DrawTextEx(rl.GetFontDefault(), fmt.ctprintf("{}", v),
 						pos+{0.2, 0.1}, 0.8, 1, rl.Color{200, 140, 85, 200})
+				}
+				if game.sunken[idx] == -1 {
+					rl.DrawRectangleV(pos, {1,1}, {20, 90, 180, 128})
 				}
 			}
 		}
