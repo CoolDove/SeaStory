@@ -583,6 +583,11 @@ draw_ui :: proc() {
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50}, 28, 1, rl.YELLOW)
 
+	if game.birdgen.wave.time > 0 {
+		str_enemy := fmt.ctprintf("下一波敌袭: {:.1f} 秒后出现\n", game.birdgen.wave.time)
+		rl.DrawTextEx(FONT_DEFAULT, str_enemy, {10, 80}, 42, 1, {200,30,30, 128})
+	}
+
 	draw_mode_card :: proc(using placer: ^BuildingPlacer, rect: ^rl.Rectangle) {
 		shadow_rect := rect^
 		shadow_rect.x += 8
