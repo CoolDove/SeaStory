@@ -25,7 +25,7 @@ _Wind_VTable :Building_VTable= {
 		ite : int
 		if powered>0 {
 			for b in hla.ite_alive_ptr(&game.birds, &ite) {
-				if math.abs(b.pos.x-wind.center.x) + math.abs(b.pos.y-wind.center.y) < 1 {
+				if linalg.distance(b.pos, wind.center) < 0.8 {
 					b.speed_scaler = 0.3
 				}
 			}
