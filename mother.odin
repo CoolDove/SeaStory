@@ -46,6 +46,7 @@ _Mother_VTable :Building_VTable= {
 		m := cast(^Mother)b
 		game.dead = true
 	},
+	pre_draw = Building_VTable_Empty.pre_draw,
 	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		mother := hla_get_value(transmute(hla.HollowArrayHandle(^Mother))handle)

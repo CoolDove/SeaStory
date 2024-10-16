@@ -37,6 +37,8 @@ _Wind_VTable :Building_VTable= {
 	release = proc(b: ^Building) {
 		wind := cast(^Wind)b
 	},
+	pre_draw = proc(handle: hla._HollowArrayHandle) {
+	},
 	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		wind := hla_get_value(transmute(hla.HollowArrayHandle(^Wind))handle)

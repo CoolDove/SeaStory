@@ -108,6 +108,7 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) -> bool/*alive*/ {
 		append(&land, pos)
 		mining[get_index(pos)] = count_minestations(pos)
 		hitpoint[idx] = 20
+		game.mineral += 2
 		if v == 0 {
 			_sweep :: proc(g: ^Game, x,y: int) {
 				if in_range(x,y) {
@@ -188,7 +189,6 @@ game_init :: proc(g: ^Game) {
 	res.wind_on_tex = rl.LoadTexture("res/wind_on.png")
 	res.probe_tex = rl.LoadTexture("res/probe.png")
 
-	mineral = 500
 	mine_interval = 1
 
 	buildings = hla.hla_make(^Building, 32)
@@ -227,6 +227,8 @@ game_init :: proc(g: ^Game) {
 			}
 		}
 	}
+
+	mineral = 500
 }
 
 game_release :: proc(using g: ^Game) {
@@ -486,6 +488,8 @@ game_draw :: proc(using g: ^Game) {
 		append(&draw_elems, DrawElem{
 			bird,
 			auto_cast y+0.05,
+			proc(draw: rawptr) {
+			},
 			proc(bird: rawptr) {
 				bird := cast(^Bird)bird
 				x,y := bird.pos.x, bird.pos.y
@@ -510,6 +514,13 @@ game_draw :: proc(using g: ^Game) {
 			append(&draw_elems, DrawElem{
 				handle,
 				auto_cast building.position.y,
+				proc(handle: rawptr) {
+					using hla
+					handleptr := cast(^HollowArrayHandle(^Building))handle
+					if building, ok := hla_get_value(handleptr^); ok {
+						building.pre_draw(transmute(hla._HollowArrayHandle)handleptr^)
+					}
+				},
 				proc(handle: rawptr) {
 					using hla
 					handleptr := cast(^HollowArrayHandle(^Building))handle
@@ -540,6 +551,9 @@ game_draw :: proc(using g: ^Game) {
 		else do return .Equal
 	})
 
+	for e in draw_elems {
+		e.pre_draw(e.data)
+	}
 	for e in draw_elems {
 		e.draw(e.data)
 	}
@@ -674,6 +688,7 @@ draw_ui :: proc() {
 DrawElem :: struct {
 	data : rawptr,
 	order : f64,
+	pre_draw : proc(data: rawptr),
 	draw : proc(data: rawptr),
 	extra_draw : proc(data: rawptr),
 	free : proc(data: rawptr)

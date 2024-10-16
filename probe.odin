@@ -40,6 +40,7 @@ _Probe_VTable :Building_VTable= {
 	release = proc(b: ^Building) {
 		pb := cast(^Probe)b
 	},
+	pre_draw = Building_VTable_Empty.pre_draw,
 	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		pb := hla_get_value(transmute(hla.HollowArrayHandle(^Probe))handle)

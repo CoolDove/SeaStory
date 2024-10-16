@@ -20,11 +20,9 @@ _PowerPump_VTable :Building_VTable= {
 		power_pump := hla_get_value(transmute(hla.HollowArrayHandle(^PowerPump))handle)
 		if !building_need_bomb_check(power_pump) do return
 	},
-	draw = proc(handle: hla._HollowArrayHandle) {
+	pre_draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		power_pump := hla_get_value(transmute(hla.HollowArrayHandle(^PowerPump))handle)
-		tex := game.res.power_pump_tex
-		height := cast(f32) tex.height
 		if GAME_DEBUG {
 			rl.DrawCircleLinesV(power_pump.center, auto_cast power_pump.range, {100, 200, 100, 200})
 		}
@@ -40,6 +38,12 @@ _PowerPump_VTable :Building_VTable= {
 				}
 			}
 		}
+	},
+	draw = proc(handle: hla._HollowArrayHandle) {
+		using hla
+		power_pump := hla_get_value(transmute(hla.HollowArrayHandle(^PowerPump))handle)
+		tex := game.res.power_pump_tex
+		height := cast(f32) tex.height
 		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)power_pump.position.x,cast(f32)power_pump.position.y, 1, height/32.0}, {0,0}, 0, rl.WHITE)
 	},
 	extra_draw = proc(handle: hla._HollowArrayHandle) {

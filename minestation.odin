@@ -55,6 +55,7 @@ _Minestation_VTable :Building_VTable= {
 			})
 		}
 	},
+	pre_draw = Building_VTable_Empty.pre_draw,
 	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)

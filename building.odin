@@ -28,6 +28,7 @@ Building :: struct {
 
 Building_VTable :: struct {
 	update : proc(handle: hla._HollowArrayHandle, delta: f64),
+	pre_draw : proc(handle: hla._HollowArrayHandle),
 	draw : proc(handle: hla._HollowArrayHandle),
 	extra_draw : proc(handle: hla._HollowArrayHandle),
 
@@ -40,6 +41,7 @@ Building_VTable :: struct {
 
 Building_VTable_Empty :Building_VTable= {
 	update = proc(handle: hla._HollowArrayHandle, delta: f64) {},
+	pre_draw = proc(handle: hla._HollowArrayHandle) {},
 	draw = proc(handle: hla._HollowArrayHandle) {},
 	extra_draw = proc(handle: hla._HollowArrayHandle) {},
 
