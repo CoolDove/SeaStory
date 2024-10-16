@@ -8,25 +8,52 @@ import "core:math/noise"
 import "core:math/linalg"
 import rl "vendor:raylib"
 import hla "collections/hollow_array"
+import pool "collections/pool"
+
+// Rely on game.birds to call `init` and `release`.
 
 BirdHandle :: hla.HollowArrayHandle(Bird)
+
 Bird :: struct {
+	using __base : _BirdBase,
+	__reserve : [128]u8,// dont go beyond this
+}
+_BirdBase :: struct {
+	type : typeid,
+	using vtable : ^Bird_VTable,
+
 	hitpoint : int,
 	pos : Vec2,
+
+	level : int,
 
 	speed : f64,
 	speed_scaler : f64,
 	destination : Vec2,
 	dest_time : f64,
-	level : int,
-	attack : int,// how much damage one shoot
-	shoot_interval : f64,
-	shoot_colddown : f64,
-	_candidates_buffer : [dynamic]_BirdTargetCandidate,
-
-	// ai
-	_building_weight_adjust : int,
 }
+
+Bird_VTable :: struct {
+	update : proc(b: ^Bird, delta: f64),
+	pre_draw : proc(b: ^Bird),
+	draw : proc(b: ^Bird),
+	extra_draw : proc(b: ^Bird),
+
+	init : proc(b: ^Bird), // after `new`
+	release : proc(b: ^Bird), // before `free`
+}
+
+Bird_VTable_Empty :Bird_VTable= {
+	update = proc(b: ^Bird, delta: f64){},
+	pre_draw = proc(b: ^Bird) {},
+	draw = proc(b: ^Bird) {},
+	extra_draw = proc(b: ^Bird) {},
+
+	init = proc(b: ^Bird) {},
+	release = proc(b: ^Bird) {},
+}
+
+
 _BirdTargetCandidate :: struct {
 	is_building : bool,
 	position : Vec2i,
@@ -44,14 +71,49 @@ BirdWave :: struct {
 	born : rl.Rectangle,
 	target : rl.Rectangle,
 }
+
+
+bird_init :: proc(type: typeid, bird: ^Bird) {
+	bird.type = type
+	bird.vtable = _bird_vtable(type)
+	bird->init()
+}
+
+_bird_vtable :: proc(t: typeid) -> ^Bird_VTable {
+	if t == BlackBird do return &_BlackBird_VTable
+	return nil
+}
+
+bird_get_draw_elem :: proc(b: ^Bird) -> DrawElem {
+	vtable := _bird_vtable(b.type)
+	return DrawElem{
+		b,
+		auto_cast b.pos.y+0.05,
+		proc(bird: rawptr) {
+			bird := cast(^Bird)bird
+			bird->pre_draw()
+		},
+		proc(bird: rawptr) {
+			bird := cast(^Bird)bird
+			bird->draw()
+		},
+		proc(bird: rawptr) {
+			bird := cast(^Bird)bird
+			bird->extra_draw()
+		},
+		proc(draw: rawptr) {
+		}
+	}
+}
+
 birdgen_is_working :: proc(bg: ^BirdGenerator) -> bool {
 	return bg.wave.time > 0
 }
 birdgen_set :: proc(bg: ^BirdGenerator, count: int, time: f64) {
 	wave : BirdWave
 	if len(game.land) == 0 do return
-	wave.time = auto_cast (rand.int31()%7+10)
-	wave.count = auto_cast (rand.int31()%4+4)
+	wave.time = time
+	wave.count = count
 	bx := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
 	by := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
 	wave.born = {bx,by, 4,4}
@@ -81,7 +143,7 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 				bird := hla.hla_get_pointer(b)
 				t := wave.target
 				dpos := Vec2{cast(f32)(rand.int31()%cast(i32)(t.width))+t.x, cast(f32)(rand.int31()%cast(i32)(t.height))+t.y}
-				if !_bird_find_target(bird, dpos) {
+				if !_bird_find_target(auto_cast bird, dpos) {
 					bird.destination = dpos
 					bird.dest_time = game.time
 				}
@@ -117,94 +179,12 @@ find_empty_cell :: proc(g: ^Game, from: [2]int, buffer: ^[BLOCK_WIDTH*BLOCK_WIDT
 	return {}, false
 }
 
-bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
-	b := hla.hla_get_pointer(handle)
-	if b.dest_time == 0 {
-		if _bird_find_target(b, b.pos) do b.dest_time = g.time
-		else do return
-	}
-	if b.hitpoint <= 0 {
-		game_kill_bird(g, handle)
-		return
-	}
+// bird_update :: proc(handle: BirdHandle, g: ^Game, delta: f64) {
+// }
 
-	if b.speed_scaler < 1.0 {
-		b.speed_scaler += math.min(1, 1 * delta)
-	}
-	if b.dest_time != 0 {
-		dir := linalg.normalize(b.destination - b.pos)
-		step := b.speed*b.speed_scaler*auto_cast delta
-		if b.shoot_colddown > 0 {
-			b.shoot_colddown -= delta
-		}
-		if auto_cast linalg.distance(b.destination, b.pos) < step {
-			if b.shoot_colddown <= 0 {// attack
-				target :Vec2i= {auto_cast b.destination.x, auto_cast b.destination.y}
-				idx := get_index(target.x, target.y)
-				target_building := g.buildingmap[idx]
-				if target_building != nil {
-					if target_building.hitpoint > 0 {
-						target_building.hitpoint -= b.attack
-					}
-				} else {
-					if g.hitpoint[idx] > 0.0 {
-						g.hitpoint[idx] -= b.attack
-					}
-					if g.hitpoint[idx] <= 0.0 {
-						b.dest_time = 0
-					}
-				}
-				b.shoot_colddown = b.shoot_interval
-			}
-		} else {
-			b.pos += dir * auto_cast step
-		}
-	}
-}
-
-bird_draw :: proc(bg: ^BirdGenerator) {
+birdgen_draw :: proc(bg: ^BirdGenerator) {
 	if bg.wave.time != 0 {
 		rl.DrawRectangleRoundedLines(bg.wave.born, 0.6, 8, .1, {120,120,60, 128})
 		rl.DrawRectangleRoundedLines(bg.wave.target, 0.6, 8, .1, {200,60,60, 128})
 	}
-}
-
-@(private="file")
-_bird_find_target :: proc(b: ^Bird, pos: Vec2) -> bool {
-	g := &game
-	if len(g.land) == 0 do return false
-
-	clear(&b._candidates_buffer)
-	for l in game.land {
-		distance := linalg.distance(pos, Vec2{auto_cast l.x, auto_cast l.y});
-		weight := 128 - math.min(cast(int)distance, 128)
-		append(&b._candidates_buffer, _BirdTargetCandidate{ false, l, weight })
-	}
-	for building in hla.ites_alive_value(&game.buildings) {
-		distance := linalg.distance(pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
-		weight := 128 - math.min(cast(int)distance, 128)
-		weight += 2 + b._building_weight_adjust
-
-		if building.type == Wind do weight = math.max(0, weight-10)
-
-		hp_percent := cast(f64)building.hitpoint/cast(f64)building.hitpoint_define
-		if hp_percent < 0.9 do weight += 1
-		if hp_percent < 0.5 do weight += 1
-		append(&b._candidates_buffer, _BirdTargetCandidate{ true, building.position, weight })
-	}
-	if len(b._candidates_buffer) == 0 do return false
-
-	slice.sort_by_cmp(b._candidates_buffer[:], proc(a,b: _BirdTargetCandidate) -> slice.Ordering {
-		if a.weight > b.weight do return .Less
-		if a.weight < b.weight do return .Greater
-		return .Equal
-	})
-
-	des := b._candidates_buffer[0]
-	if !des.is_building do b._building_weight_adjust += 2
-	else do b._building_weight_adjust = 0
-	x := des.position.x
-	y := des.position.y
-	b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y + rand.float32()*0.1}
-	return true
 }

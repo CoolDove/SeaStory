@@ -80,7 +80,7 @@ main :: proc() {
 			fmt.printf("{} leaked: {}\n", entry.location, entry.size)
 		}
 		for entry in _track.bad_free_array {
-			fmt.printf("{} bad free: {}\n", entry.location)
+			fmt.printf("bad free: {}\n", entry.location)
 		}
 		mem.tracking_allocator_destroy(&_track)
 	}

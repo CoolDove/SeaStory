@@ -12,6 +12,7 @@ import "core:math"
 import "core:log"
 import "core:strings"
 import hla "collections/hollow_array"
+import pool "collections/pool"
 import rl "vendor:raylib"
 
 Game :: struct {
@@ -40,6 +41,8 @@ Game :: struct {
 	mining_count : int, // update per second
 
 	res : GameResources,
+
+	birds_ai_buffer_pool : pool.Pool([dynamic]_BirdTargetCandidate),
 	using operation : GameOperation,
 }
 
@@ -79,22 +82,16 @@ Position :: struct {
 }
 
 game_add_bird :: proc(g: ^Game, p: rl.Vector2) -> BirdHandle {
-	b := hla.hla_append(&g.birds, Bird{
-		pos = p,
-		hitpoint = 100,
-		shoot_interval = 0.8,
-		attack = 6,
-		speed = 1.2,
-		speed_scaler = 1.0,
-	})
+	b := hla.hla_append(&g.birds, Bird{})
 	bird := hla.hla_get_pointer(b)
-	bird._candidates_buffer = make([dynamic]_BirdTargetCandidate, 128)
+	bird_init(BlackBird, bird)
+	bird.pos = p
 	return b 
 }
 
 game_kill_bird :: proc(g: ^Game, b: hla.HollowArrayHandle(Bird)) {
 	bird := hla.hla_get_pointer(b)
-	delete(bird._candidates_buffer)
+	bird->release()
 	hla.hla_remove_handle(b)
 }
 
@@ -141,7 +138,18 @@ mark_toggle :: proc(using g: ^Game, x,y : int) {
 	}
 }
 
+BirdsAiBufferPool :pool.PoolImpl([dynamic]_BirdTargetCandidate)= {
+	_add = proc(v: ^[dynamic]_BirdTargetCandidate) {
+		v^ = make([dynamic]_BirdTargetCandidate, 32)
+	},
+	_remove = proc(v: ^[dynamic]_BirdTargetCandidate) {
+		delete(v^)
+	},
+}
+
 game_init :: proc(g: ^Game) {
+	pool.init(&g.birds_ai_buffer_pool, 0, &BirdsAiBufferPool)
+
 	// generate map
 	for i in 0..<160 do game.block[i] = ITEM_BOMB
 	rand.reset(transmute(u64)time.tick_now())
@@ -243,6 +251,7 @@ game_release :: proc(using g: ^Game) {
 	hla.hla_delete(&g.birds)
 	delete(game.building_placers)
 	delete(game.land)
+	pool.release(&game.birds_ai_buffer_pool)
 }
 
 _game_update_dead :: proc(delta: f64) {
@@ -378,6 +387,15 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	last_position = rl.GetMousePosition()
 
 	// ** game logic
+	for birdh in hla.ites_alive_handle(&game.birds) {// bird die
+		bird := hla.hla_get_pointer(birdh)
+		if bird.hitpoint <= 0 {
+			bird->release()
+			hla.hla_remove_handle(birdh)
+			fmt.printf("bird die\n")
+		}
+	}
+
 	for bh in hla.ites_alive_handle(&game.buildings) {// building die
 		b := hla.hla_get_value(bh)
 		if b.hitpoint <= 0 {
@@ -413,7 +431,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	// bird gen
 	if game.birds.count == 0 && !birdgen_is_working(&g.birdgen) {
-		birdgen_set(&g.birdgen, 1+2*game.level, math.max(7-0.5*cast(f64)level,0) - 1)
+		birdgen_set(&g.birdgen, 1+2*game.level, math.max(10-0.5*cast(f64)level,1) - 1)
 		game.level += 1
 	}
 	birdgen_update(g, &g.birdgen, 1.0/60.0)
@@ -423,8 +441,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		building.update(transmute(hla._HollowArrayHandle)building_handle, delta)
 	}
 
-	for bird_handle in hla.ites_alive_handle(&g.birds) {
-		bird_update(bird_handle, g, delta)
+	for bird in hla.ites_alive_ptr(&g.birds) {
+		bird->update(delta)
 	}
 
 	for t, &p in game.building_placers {
@@ -479,32 +497,7 @@ game_draw :: proc(using g: ^Game) {
 
 	// draw birds
 	for bird in hla.ites_alive_ptr(&g.birds) {
-		x := cast(f32)bird.pos.x
-		y := cast(f32)bird.pos.y
-		DrawBird :: struct {
-			position: Vec2,
-		}
-		bird := bird
-		append(&draw_elems, DrawElem{
-			bird,
-			auto_cast y+0.05,
-			proc(draw: rawptr) {
-			},
-			proc(bird: rawptr) {
-				bird := cast(^Bird)bird
-				x,y := bird.pos.x, bird.pos.y
-				rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1, 1}, {0,0}, 0, {0,0,0, 64})// shadow
-				rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x,y, 1, 1}, {0,0}, 0, rl.WHITE)
-			},
-			proc(bird: rawptr) {
-				bird := cast(^Bird)bird
-				if GAME_DEBUG {
-					rl.DrawLineV(bird.pos, bird.destination, {255,0,0, 64})
-				}
-			},
-			proc(draw: rawptr) {
-			}
-		})
+		append(&draw_elems, bird_get_draw_elem(bird))
 	}
 
 	for building_handle in hla.ites_alive_handle(&game.buildings) {
@@ -564,7 +557,7 @@ game_draw :: proc(using g: ^Game) {
 		e.free(e.data)
 	}
 
-	bird_draw(&game.birdgen)
+	birdgen_draw(&game.birdgen)
 
 	draw_cell :: proc(using g: ^Game, x,y: int) {
 		idx := get_index(x,y)
@@ -679,8 +672,7 @@ draw_ui :: proc() {
 	}
 	// draw dead
 	if game.dead {
-		rl.DrawRectangleV({0,0}, {cast(f32)BLOCK_WIDTH, cast(f32)BLOCK_WIDTH}, {255,60,60, 80})
-		rl.DrawTextEx(FONT_DEFAULT, "You lose, press mouse left to close game", {20, 40}, 48, 0, rl.BLACK)
+		rl.DrawTextEx(FONT_DEFAULT, "You lose, press mouse left to close game", {40, 140}, 48, 0, rl.BLACK)
 	}
 
 }
