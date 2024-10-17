@@ -15,16 +15,27 @@ PufferBird :: struct {
 
 	attack : int, // how much damage the explosion deals
 	range : f64, // the range of the explosion
+	boomed : bool,
 }
 
 PufferBird_VTable :_Bird_VTable(PufferBird)= {
 	update = proc(b: ^PufferBird, delta: f64) {
+		if b.boomed {
+			b.hitpoint = 0
+			return
+		}
 		if b.dest_time == 0 {
 			if _find_target(b, {}) do b.dest_time = game.time
 		} else {
-			if _bird_move_to_destination(auto_cast b, delta) {
-				b.hitpoint = 0
-				fmt.printf("boom\n")
+			if _bird_move_to_destination(auto_cast b, delta, 0.3) {
+				using b
+				boomed = true
+				ite:int
+				for building in hla.ite_alive_value(&game.buildings, &ite) {
+					if linalg.distance(building.center, pos) < 2 {
+						building.hitpoint -= attack
+					}
+				}
 			}
 		}
 	},
@@ -34,16 +45,16 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 	},
 	extra_draw = proc(b: ^PufferBird) {
 		_bird_extra_draw(auto_cast b)
+		if b.boomed do rl.DrawCircleV(b.pos+{0.5,0.5}, cast(f32)b.range, rl.WHITE)
 	},
 
 	init = proc(using b: ^PufferBird) {
-		hitpoint = 100
-		attack = 6
+		hitpoint = 200
+		attack = 140
 		speed = 0.8
 		speed_scaler = 1.0
 
-		b.attack = 100
-		b.range = 2
+		b.range = 1
 	},
 	prepare = proc(b: ^PufferBird, target: rl.Rectangle) {
 		if _find_target(b, target) {

@@ -301,6 +301,17 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				placer.colddown_time -= 1
 				if placer.colddown_time < 0 do placer.colddown_time = 0
 			}
+		} else if rl.IsKeyPressed(.F3) {
+			if game.birds.count == 0 {
+				if birdgen_is_working(&g.birdgen) {
+					game.birdgen.wave.time = 0.1
+				}
+			} else {
+				ite:int
+				for b in hla.ite_alive_ptr(&game.birds, &ite) {
+					b.hitpoint = 0
+				}
+			}
 		}
 	}
 
@@ -665,6 +676,9 @@ draw_ui :: proc() {
 
 	if game.birdgen.wave.time > 0 {
 		str_enemy := fmt.ctprintf("第{}波敌袭: {:.1f} 秒后出现\n", game.level, game.birdgen.wave.time)
+		rl.DrawTextEx(FONT_DEFAULT, str_enemy, {10, 80}, 42, 1, {200,30,30, 128})
+	} else {
+		str_enemy := fmt.ctprintf("第{}波敌袭中\n", game.level)
 		rl.DrawTextEx(FONT_DEFAULT, str_enemy, {10, 80}, 42, 1, {200,30,30, 128})
 	}
 

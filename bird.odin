@@ -85,9 +85,9 @@ _bird_vtable :: proc(t: typeid) -> ^_Bird_VTable(Bird) {
 	return nil
 }
 
-_bird_move_to_destination :: proc(b: ^Bird, delta: f64) -> bool/*arrived*/ {
+_bird_move_to_destination :: proc(b: ^Bird, delta: f64, tolerance: f64=0) -> bool/*arrived*/ {
 	step := b.speed*b.speed_scaler*auto_cast delta
-	if auto_cast linalg.distance(b.destination, b.pos) < step {
+	if auto_cast linalg.distance(b.destination, b.pos) < step+tolerance {
 		return true // arrived
 	}
 	dir := linalg.normalize(b.destination - b.pos)
