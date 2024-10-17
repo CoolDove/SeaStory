@@ -22,28 +22,28 @@ Building :: struct {
 
 	powered : int,// how many powerpump for this building
 
-	using _vtable : ^Building_VTable,
+	using _vtable : ^Building_VTable(Building),
 	extra : rawptr,
 }
 
-Building_VTable :: struct {
-	update : proc(handle: hla._HollowArrayHandle, delta: f64),
-	pre_draw : proc(handle: hla._HollowArrayHandle),
-	draw : proc(handle: hla._HollowArrayHandle),
-	extra_draw : proc(handle: hla._HollowArrayHandle),
+Building_VTable :: struct($T:typeid) {
+	update : proc(building: ^T, delta: f64),
+	pre_draw : proc(building: ^T),
+	draw : proc(building: ^T),
+	extra_draw : proc(building: ^T),
 
-	init : proc(b: ^Building),
-	release : proc(b: ^Building),
+	init : proc(b: ^T),
+	release : proc(b: ^T),
 
 	_is_place_on_water : proc() -> bool,
 	_define_hitpoint : proc() -> int,
 }
 
-Building_VTable_Empty :Building_VTable= {
-	update = proc(handle: hla._HollowArrayHandle, delta: f64) {},
-	pre_draw = proc(handle: hla._HollowArrayHandle) {},
-	draw = proc(handle: hla._HollowArrayHandle) {},
-	extra_draw = proc(handle: hla._HollowArrayHandle) {},
+Building_VTable_Empty :Building_VTable(Building)= {
+	update = proc(building: ^Building, delta: f64) {},
+	pre_draw = proc(building: ^Building) {},
+	draw = proc(building: ^Building) {},
+	extra_draw = proc(building: ^Building) {},
 
 	init = proc(b: ^Building) {},
 	release = proc(b: ^Building) {},
@@ -53,13 +53,13 @@ Building_VTable_Empty :Building_VTable= {
 }
 
 // !!! where you register a new building type
-_building_vtable :: proc(t: typeid) -> ^Building_VTable {
-	if t == Tower do return &_Tower_VTable
-	if t == PowerPump do return &_PowerPump_VTable
-	if t == Minestation do return &_Minestation_VTable
-	if t == Mother do return &_Mother_VTable
-	if t == Wind do return &_Wind_VTable
-	if t == Probe do return &_Probe_VTable
+_building_vtable :: proc(t: typeid) -> ^Building_VTable(Building) {
+	if t == Tower do return auto_cast &_Tower_VTable
+	if t == PowerPump do return auto_cast &_PowerPump_VTable
+	if t == Minestation do return auto_cast &_Minestation_VTable
+	if t == Mother do return auto_cast &_Mother_VTable
+	if t == Wind do return auto_cast &_Wind_VTable
+	if t == Probe do return auto_cast &_Probe_VTable
 	return nil
 }
 
@@ -84,7 +84,6 @@ building_new_ :: proc(T: typeid, position: Vec2i) -> ^Building {
 	t.center = Vec2{cast(f32)position.x, cast(f32)position.y} + {0.5, 0.5}
 	t.hitpoint_define = t._vtable._define_hitpoint()
 	t.hitpoint = t.hitpoint_define
-	fmt.printf("new building, hitpoint: {}\n", t.hitpoint)
 	return auto_cast t
 }
 
@@ -111,7 +110,7 @@ building_get_cost :: proc(bt: typeid) -> int {
 	if bt == PowerPump do return 100
 	if bt == Minestation do return 100
 	if bt == Wind do return 50
-	if bt == Probe do return 50
+	if bt == Probe do return 30
 	return 0
 }
 // second

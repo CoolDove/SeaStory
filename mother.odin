@@ -19,10 +19,8 @@ Mother :: struct {
 }
 
 @private
-_Mother_VTable :Building_VTable= {
-	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
-		using hla
-		m := hla_get_value(transmute(hla.HollowArrayHandle(^Mother))handle)
+_Mother_VTable :Building_VTable(Mother)= {
+	update = proc(m: ^Mother, delta: f64) {
 		if m._recover_timer > 0 {
 			m._recover_timer -= delta
 		}
@@ -37,22 +35,18 @@ _Mother_VTable :Building_VTable= {
 		}
 		m._hitpoint_last = m.hitpoint
 	},
-	init = proc(b: ^Building) {
-		b.powered = -1
-		m := cast(^Mother)b
+	init = proc(m: ^Mother) {
+		m.powered = -1
 		m._hitpoint_last = m.hitpoint
 	},
-	release = proc(b: ^Building) {
-		m := cast(^Mother)b
+	release = proc(m: ^Mother) {
 		game.dead = true
 	},
-	pre_draw = Building_VTable_Empty.pre_draw,
-	draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		mother := hla_get_value(transmute(hla.HollowArrayHandle(^Mother))handle)
+	pre_draw = auto_cast Building_VTable_Empty.pre_draw,
+	draw = proc(m: ^Mother) {
 		tex := game.res.mother_tex
 		height := cast(f32) tex.height
-		src, dst :rl.Rectangle= {0,0,32, height}, {cast(f32)mother.position.x,cast(f32)mother.position.y, 1, height/32.0}
+		src, dst :rl.Rectangle= {0,0,32, height}, {cast(f32)m.position.x,cast(f32)m.position.y, 1, height/32.0}
 		frame :f32= 0.04
 		rl.DrawTexturePro(tex, src, {dst.x, dst.y+frame, dst.width, dst.height}, {0,0}, 0, rl.BLACK)
 		rl.DrawTexturePro(tex, src, {dst.x, dst.y-frame, dst.width, dst.height}, {0,0}, 0, rl.BLACK)
@@ -60,10 +54,8 @@ _Mother_VTable :Building_VTable= {
 		rl.DrawTexturePro(tex, src, {dst.x-frame, dst.y, dst.width, dst.height}, {0,0}, 0, rl.BLACK)
 		rl.DrawTexturePro(tex, src, dst, {0,0}, 0, rl.WHITE)
 	},
-	extra_draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
-		draw_building_hpbar(station)
+	extra_draw = proc(m: ^Mother) {
+		draw_building_hpbar(m)
 	},
 	_is_place_on_water = proc() -> bool {
 		return false

@@ -23,10 +23,8 @@ Minestation :: struct {
 }
 
 @private
-_Minestation_VTable :Building_VTable= {
-	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
-		using hla
-		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
+_Minestation_VTable :Building_VTable(Minestation)= {
+	update = proc(station: ^Minestation, delta: f64) {
 		using station
 		if !building_need_bomb_check(station) do return
 		poweron :bool= station.powered > 0
@@ -42,30 +40,24 @@ _Minestation_VTable :Building_VTable= {
 		}
 		_poweron = poweron
 	},
-	init = proc(b: ^Building) {
-		station := cast(^Minestation)b
+	init = proc(station: ^Minestation) {
 		station.range = 4
 	},
-	release = proc(b: ^Building) {
-		station := cast(^Minestation)b
-		bx, by := b.position.x, b.position.y
+	release = proc(station: ^Minestation) {
+		bx, by := station.position.x, station.position.y
 		if station._poweron {
 			minestation_for_available_cells(station, proc(p: Vec2i) {
 				game.mining[get_index(p.x, p.y)] -= 1
 			})
 		}
 	},
-	pre_draw = Building_VTable_Empty.pre_draw,
-	draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
+	pre_draw = auto_cast Building_VTable_Empty.pre_draw,
+	draw = proc(station: ^Minestation) {
 		tex := game.res.minestation_tex
 		height := cast(f32) tex.height
 		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)station.position.x,cast(f32)station.position.y, 1, height/32.0}, {0,0}, 0, rl.WHITE)
 	},
-	extra_draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		station := hla_get_value(transmute(hla.HollowArrayHandle(^Minestation))handle)
+	extra_draw = proc(station: ^Minestation) {
 		draw_building_hpbar(station)
 		if station.powered <= 0 {
 			draw_building_nopower(station)

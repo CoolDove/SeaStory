@@ -36,7 +36,7 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 				for building in hla.ite_alive_value(&game.buildings, &ite) {
 					if linalg.distance(building.center, pos) < 2 {
 						building.hitpoint -= attack
-						vfx_number(b.pos, attack, ENEMY_ATK_COLOR)
+						vfx_number(building.center, attack, ENEMY_ATK_COLOR)
 						vfx_boom(b.pos+{0.5,0.5}, auto_cast b.range, 0.6)
 					}
 				}

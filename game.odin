@@ -243,7 +243,6 @@ game_init :: proc(g: ^Game) {
 	{// sweep the first cell
 		for i: int; true; i += 1 {
 			p := cast(int)(BLOCK_WIDTH * BLOCK_WIDTH / 2) + cast(int)BLOCK_WIDTH/2 + (1 if i%2==0 else -1) * auto_cast i/2
-			fmt.printf("try index: {} ({})\n", p, block[p])
 			if block[p] == 0 {
 				x, y := p%auto_cast BLOCK_WIDTH, p/auto_cast BLOCK_WIDTH
 				sweep(&game, x, y)
@@ -525,9 +524,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	}
 	birdgen_update(g, &g.birdgen, 1.0/60.0)
 
-	for building_handle in hla.ites_alive_handle(&game.buildings) {
-		building := hla.hla_get_pointer(building_handle)^
-		building.update(transmute(hla._HollowArrayHandle)building_handle, delta)
+	for building in hla.ites_alive_value(&game.buildings) {
+		building->update(delta)
 	}
 
 	for bird in hla.ites_alive_ptr(&g.birds) {
@@ -596,42 +594,25 @@ game_draw :: proc(using g: ^Game) {
 		append(&draw_elems, bird_get_draw_elem(bird))
 	}
 
-	for building_handle in hla.ites_alive_handle(&game.buildings) {
-		handle := new(hla._HollowArrayHandle)
-		handle^ = transmute(hla._HollowArrayHandle)building_handle
-		if building, ok := hla.hla_get_value(building_handle); ok {
-			append(&draw_elems, DrawElem{
-				handle,
-				auto_cast building.position.y,
-				proc(handle: rawptr) {
-					using hla
-					handleptr := cast(^HollowArrayHandle(^Building))handle
-					if building, ok := hla_get_value(handleptr^); ok {
-						building.pre_draw(transmute(hla._HollowArrayHandle)handleptr^)
-					}
-				},
-				proc(handle: rawptr) {
-					using hla
-					handleptr := cast(^HollowArrayHandle(^Building))handle
-					building := hla_get_value(handleptr^)
-					if building, ok := hla_get_value(handleptr^); ok {
-						building.draw(transmute(hla._HollowArrayHandle)handleptr^)
-					}
-				},
-				proc(handle: rawptr) {
-					using hla
-					handleptr := cast(^HollowArrayHandle(^Building))handle
-					if building, ok := hla_get_value(handleptr^); ok {
-						building.extra_draw(transmute(hla._HollowArrayHandle)handleptr^)
-					}
-				},
-				proc(handle: rawptr) {
-					using hla
-					handleptr := cast(^hla._HollowArrayHandle)handle
-					free(handleptr)
-				}
-			})
-		}
+	for building in hla.ites_alive_value(&game.buildings) {
+		append(&draw_elems, DrawElem{
+			building,
+			auto_cast building.position.y,
+			proc(building: rawptr) {
+				building := cast(^Building)building
+				building->pre_draw()
+			},
+			proc(building: rawptr) {
+				building := cast(^Building)building
+				building->draw()
+			},
+			proc(building: rawptr) {
+				building := cast(^Building)building
+				building->extra_draw()
+			},
+			proc(building: rawptr) {
+			}
+		})
 	}
 
 	slice.sort_by_cmp(draw_elems[:], proc(a, b: DrawElem) -> slice.Ordering {

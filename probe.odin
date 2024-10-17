@@ -18,10 +18,8 @@ Probe :: struct {
 }
 
 @private
-_Probe_VTable :Building_VTable= {
-	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
-		using hla
-		pb := hla_get_value(transmute(hla.HollowArrayHandle(^Probe))handle)
+_Probe_VTable :Building_VTable(Probe)= {
+	update = proc(pb: ^Probe, delta: f64) {
 		if !building_need_bomb_check(pb) do return
 		idx := get_index(pb.position)
 		if game.block[idx] == ITEM_BOMB {
@@ -32,25 +30,19 @@ _Probe_VTable :Building_VTable= {
 			}
 		}
 	},
-	init = proc(b: ^Building) {
-		pb := cast(^Probe)b
+	init = proc(pb: ^Probe) {
 		pb.powered = -1
 		pb.auto_die = 0.6
 	},
-	release = proc(b: ^Building) {
-		pb := cast(^Probe)b
+	release = proc(pb: ^Probe) {
 	},
-	pre_draw = Building_VTable_Empty.pre_draw,
-	draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		pb := hla_get_value(transmute(hla.HollowArrayHandle(^Probe))handle)
+	pre_draw = auto_cast Building_VTable_Empty.pre_draw,
+	draw = proc(pb: ^Probe) {
 		tex := game.res.probe_tex
 		height := cast(f32) tex.height
 		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)pb.position.x,cast(f32)pb.position.y, 1, height/32.0}, {0,0}, 0, rl.WHITE)
 	},
-	extra_draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		pb := hla_get_value(transmute(hla.HollowArrayHandle(^Probe))handle)
+	extra_draw = proc(pb: ^Probe) {
 		draw_building_hpbar(pb)
 	},
 	_is_place_on_water = proc() -> bool {

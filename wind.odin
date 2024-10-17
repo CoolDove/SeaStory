@@ -17,10 +17,8 @@ Wind :: struct {
 }
 
 @private
-_Wind_VTable :Building_VTable= {
-	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
-		using hla
-		wind := hla_get_value(transmute(hla.HollowArrayHandle(^Wind))handle)
+_Wind_VTable :Building_VTable(Wind)= {
+	update = proc(wind: ^Wind, delta: f64) {
 		using wind
 		ite : int
 		if powered>0 {
@@ -31,24 +29,18 @@ _Wind_VTable :Building_VTable= {
 			}
 		}
 	},
-	init = proc(b: ^Building) {
-		wind := cast(^Wind)b
+	init = proc(wind: ^Wind) {
 	},
-	release = proc(b: ^Building) {
-		wind := cast(^Wind)b
+	release = proc(wind: ^Wind) {
 	},
-	pre_draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		wind := hla_get_value(transmute(hla.HollowArrayHandle(^Wind))handle)
+	pre_draw = proc(wind: ^Wind) {
 		tex := game.res.wind_off_tex
 		height := cast(f32) tex.height
 		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)wind.position.x,cast(f32)wind.position.y, 1, height/32.0}, {0,0}, 0, rl.WHITE)
 	},
-	draw = proc(handle: hla._HollowArrayHandle) {
+	draw = proc(wind: ^Wind) {
 	},
-	extra_draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		wind := hla_get_value(transmute(hla.HollowArrayHandle(^Wind))handle)
+	extra_draw = proc(wind: ^Wind) {
 		draw_building_hpbar(wind)
 		if wind.powered <= 0 {
 			draw_building_nopower(wind)

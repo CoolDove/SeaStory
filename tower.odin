@@ -19,11 +19,8 @@ Tower :: struct {
 	target : BirdHandle,
 }
 
-_Tower_VTable :Building_VTable= {
-	update = proc(handle: hla._HollowArrayHandle, delta: f64) {
-		using hla
-		tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
-
+_Tower_VTable :Building_VTable(Tower)= {
+	update = proc(tower: ^Tower, delta: f64) {
 		if tower.shoot_charge < tower.shoot_interval && tower.powered > 0 {
 			tower.shoot_charge += delta
 		}
@@ -52,9 +49,7 @@ _Tower_VTable :Building_VTable= {
 			}
 		}
 	},
-	pre_draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
+	pre_draw = proc(tower: ^Tower) {
 		if GAME_DEBUG {
 			rl.DrawCircleLinesV(tower.center, auto_cast tower.range, {255, 100, 100, 128})
 		}
@@ -63,16 +58,12 @@ _Tower_VTable :Building_VTable= {
 			rl.DrawCircleLinesV(tower.center, auto_cast tower.range, {255, 100, 100, 128})
 		}
 	},
-	draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
+	draw = proc(tower: ^Tower) {
 		tex := game.res.tower_tex
 		height := cast(f32) tex.height
 		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)tower.position.x,cast(f32)tower.position.y, 1, height/32.0}, {0,1}, 0, rl.WHITE)
 	},
-	extra_draw = proc(handle: hla._HollowArrayHandle) {
-		using hla
-		tower := hla_get_value(transmute(hla.HollowArrayHandle(^Tower))handle)
+	extra_draw = proc(tower: ^Tower) {
 		draw_building_hpbar(tower)
 		if tower.powered > 0 {
 			from := tower.center - {0,1.0}
@@ -88,12 +79,12 @@ _Tower_VTable :Building_VTable= {
 			rl.DrawTextEx(FONT_DEFAULT, fmt.ctprintf("power: {}", tower.powered), tower.center+{-0.5, 0.4}, 0.4, 0, {0,0,0, 128})
 		}
 	},
-	init = proc(b: ^Building) {
-		t := cast(^Tower)b
-		t.range = 4 
-		t.shoot_interval = 0.25
+	init = proc(tower: ^Tower) {
+		tower.range = 4 
+		tower.shoot_interval = 0.25
 	}, 
-	release = proc(b: ^Building) {},
+	release = proc(tower: ^Tower) {},
+
 	_is_place_on_water = Building_VTable_Empty._is_place_on_water,
 	_define_hitpoint = proc() -> int { return 350 }
 }
