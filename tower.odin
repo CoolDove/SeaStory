@@ -35,8 +35,10 @@ _Tower_VTable :Building_VTable= {
 				tower.target = {}
 			} else if tower.shoot_charge >= tower.shoot_interval {
 				bird := hla.hla_get_pointer(tower.target)
-				bird.hitpoint -= 15
+				atk := 15
+				bird.hitpoint -= atk
 				tower.shoot_charge = 0
+				vfx_number(bird.pos+rand.float32()*0.1, atk, PLAYER_ATK_COLOR)
 			}
 		} else {
 			distance :f32= auto_cast tower.range

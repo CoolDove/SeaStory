@@ -786,3 +786,9 @@ edraw :: proc(data: rawptr, draw: proc(data: rawptr)) -> DrawElem {
 	e.draw = draw
 	return e
 }
+eextra_draw :: proc(data: rawptr, extra_draw: proc(data: rawptr)) -> DrawElem {
+	e := _DrawElem_Empty
+	e.data = data
+	e.extra_draw = extra_draw
+	return e
+}

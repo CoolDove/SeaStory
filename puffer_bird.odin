@@ -36,6 +36,7 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 				for building in hla.ite_alive_value(&game.buildings, &ite) {
 					if linalg.distance(building.center, pos) < 2 {
 						building.hitpoint -= attack
+						vfx_number(b.pos, attack, ENEMY_ATK_COLOR)
 
 						VfxBoom :: struct {
 							using __base : _VfxBase,
@@ -50,7 +51,7 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 								v := cast(^VfxBoom)v
 								if v.life <= 0 do v.die = true
 							},
-							edraw(vfx, auto_cast proc(vfx: ^VfxBoom) {
+							eextra_draw(vfx, auto_cast proc(vfx: ^VfxBoom) {
 								alpha :u8= cast(u8)(255.0 * vfx.life)
 								rl.DrawCircleV(vfx.center, vfx.range+vfx.range*0.5*(1-vfx.life), {128,128,128, alpha/2})
 								rl.DrawCircleV(vfx.center, vfx.range, {255,255,255, alpha})

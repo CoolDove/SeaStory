@@ -43,10 +43,12 @@ BlackBird_VTable :_Bird_VTable(BlackBird)= {
 					if target_building != nil {
 						if target_building.hitpoint > 0 {
 							target_building.hitpoint -= b.attack
+							vfx_number(b.pos+rand.float32()*0.1, attack, ENEMY_ATK_COLOR)
 						}
 					} else {
 						if g.hitpoint[idx] > 0.0 {
 							g.hitpoint[idx] -= b.attack
+							vfx_number(b.pos+rand.float32()*0.1, attack, ENEMY_ATK_COLOR)
 						}
 						if g.hitpoint[idx] <= 0.0 {
 							b.dest_time = 0

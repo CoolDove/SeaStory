@@ -73,6 +73,10 @@ _data_charsheet := #load("char_sheet.txt", string)
 @(private="file")
 _track : mem.Tracking_Allocator
 
+
+ENEMY_ATK_COLOR :rl.Color = {240,10,10, 255}
+PLAYER_ATK_COLOR :rl.Color = {200,220,240, 255}
+
 main :: proc() {
 	mem.tracking_allocator_init(&_track, context.allocator)
 	context.allocator = mem.tracking_allocator(&_track)
