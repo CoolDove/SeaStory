@@ -158,9 +158,11 @@ birdgen_set :: proc(bg: ^BirdGenerator, config: EnemyWaveConfig) {
 	h := cast(f32)math.min(4, cast(int)BLOCK_WIDTH-(mother.y-offset.y))
 	wave.target = {cast(f32)(mother.x-offset.x), cast(f32)(mother.y-offset.y), w, h}
 
-	bx := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
-	by := cast(f32)(rand.int31()%cast(i32)(BLOCK_WIDTH-4))
-	wave.born = {bx,by, 4,4}
+	if bornpos, ok := find_born({auto_cast wave.target.x, auto_cast wave.target.y}, wave.target); ok {
+		wave.born = {cast(f32)bornpos.x, cast(f32)bornpos.y, 2,2} 
+	} else {
+		wave.born = wave.target
+	}
 
 	bg.wave = wave
 }
@@ -184,28 +186,21 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 	}
 }
 
-find_empty_cell :: proc(g: ^Game, from: [2]int, buffer: ^[BLOCK_WIDTH*BLOCK_WIDTH]u32, dir:u32=0xff) -> ([2]int, bool) {
-	DIR_NONE :: 0
-	DIR_ROOT :: 0xff
-	DIR_UP :: 1
-	DIR_DOWN :: 2
-	DIR_LEFT :: 3
-	DIR_RIGHT :: 4
-	if !in_range(from.x, from.y) do return {}, false
-	idx := get_index(from.x, from.y)
-	buffer[idx] = dir
-	if g.mask[idx] == 0 do return from, true
-	if tup := from+{0,1}; in_range(tup.x, tup.y) && buffer[get_index(tup.x, tup.y)] != DIR_NONE {
-		if up, up_ok := find_empty_cell(g, from+{0,1}, buffer); up_ok do return up, true
-	}
-	if tdown := from+{0,1}; in_range(tdown.x, tdown.y) && buffer[get_index(tdown.x, tdown.y)] != DIR_NONE {
-		if down, down_ok := find_empty_cell(g, from+{0,1}, buffer); down_ok do return down, true
-	}
-	if tleft := from+{0,1}; in_range(tleft.x, tleft.y) && buffer[get_index(tleft.x, tleft.y)] != DIR_NONE {
-		if left, left_ok := find_empty_cell(g, from+{0,1}, buffer); left_ok do return left, true
-	}
-	if tright := from+{0,1}; in_range(tright.x, tright.y) && buffer[get_index(tright.x, tright.y)] != DIR_NONE {
-		if right, right_ok := find_empty_cell(g, from+{0,1}, buffer); right_ok do return right, true
+_birdgen_find_born :: proc(bg: ^BirdGenerator, target: rl.Rectangle) -> rl.Rectangle {
+	return {}
+}
+
+find_born :: proc(from: [2]int, target: rl.Rectangle) -> (Vec2i, bool) {
+	ite:Vec3i
+	for p in ite_around(from, 12, &ite) {
+		if in_range(p) {
+			if _check(p) && _check(p+{0,1}) && _check(p+{1,0}) && _check(p+{1,1}) {
+				return p, true
+			}
+			_check :: proc(p: Vec2i) -> bool {
+				return in_range(p) && game.mask[get_index(p)] == 0
+			}
+		}
 	}
 	return {}, false
 }

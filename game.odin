@@ -534,8 +534,8 @@ game_draw :: proc(using g: ^Game) {
 		}
 	}
 
-	rl.DrawLine(-100, 0, 100, 0, rl.Color{255,255,0, 255})
-	rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
+	// rl.DrawLine(-100, 0, 100, 0, rl.Color{255,255,0, 255})
+	// rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
 
 	// draw cursor
 	if in_range(hover_cell.x, hover_cell.y) {

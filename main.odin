@@ -29,6 +29,8 @@ game_end : bool
 // types
 Vec2 :: rl.Vector2
 Vec2i :: [2]int
+Vec3 :: rl.Vector3
+Vec3i :: [3]int
 
 
 when ODIN_DEBUG {
@@ -141,3 +143,43 @@ CellInfo :: struct {
 	block, mask : u32
 }
 GameBlock :: #soa [BLOCK_WIDTH*BLOCK_WIDTH]CellInfo
+
+// ite.x: round count, ite.y: step count
+ite_around :: proc(c: Vec2i, round: int, ite: ^[3]int) -> (Vec2i, bool) {
+	if ite.x == 0 do ite.x = 1
+	res : Vec2i
+	succ : bool
+	r := ite.x
+	s := ite.y
+	if r >= round do return {}, false
+	if s == 0 {
+		i := ite.z
+		_step(ite, round)
+		return c+{1-r+i, r}, true
+	} else if s == 1 {
+		i := ite.z
+		_step(ite, round)
+		return c+{r, 1-r+i}, true
+	} else if s == 2 {
+		i := ite.z
+		_step(ite, round)
+		return c+{r-1-i, -r}, true
+	} else if s == 3 {
+		i := ite.z
+		_step(ite, round)
+		return c+{r, r-1+i}, true
+	}
+	return {}, false
+
+	_step :: proc(ite: ^[3]int, round: int) {
+		ite.z += 1
+		if ite.z == ite.x*2 {
+			ite.z = 0
+			ite.y += 1
+			if ite.y == 4 {
+				ite.y = 0
+				ite.x += 1
+			}
+		}
+	}
+}
