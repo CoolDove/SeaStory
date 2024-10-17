@@ -53,7 +53,7 @@ get_indexv :: proc(pos: Vec2i) -> int {
 }
 
 get_center :: proc(v: Vec2i) -> Vec2 {
-	return {auto_cast v.x, auto_cast v.y}
+	return {auto_cast v.x + 0.5, auto_cast v.y + 0.5}
 }
 
 in_range :: proc {

@@ -415,7 +415,16 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			// ** sweep
 			if !sweep(&game, x, y) {
 				rl.PlaySound(res.error_sfx)
-				vfx_boom(get_center(hover_cell)+{0.5,0.5}, 1.35, 0.6)
+				center := get_center(hover_cell)
+				vfx_boom(center, 1.35, 0.6)
+				for b in hla.ites_alive_ptr(&game.birds) {
+					dist := linalg.distance(b.pos+{0.5,0.5}, center)
+					if dist < 1.8 {
+						dmg := math.min(b.hitpoint, 200)
+						b.hitpoint -= dmg
+						vfx_number(b.pos, dmg, PLAYER_ATK_COLOR)
+					}
+				}
 				_blow_cell(hover_cell+{-1,-1})
 				_blow_cell(hover_cell+{0,-1})
 				_blow_cell(hover_cell+{1,-1})
