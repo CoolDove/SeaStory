@@ -2,6 +2,7 @@ package main
 
 import "base:runtime"
 import "core:fmt"
+import "core:reflect"
 import "core:mem"
 import "core:strconv"
 import "core:slice"
@@ -188,6 +189,47 @@ ite_around :: proc(c: Vec2i, round: int, ite: ^[3]int) -> (Vec2i, bool) {
 				ite.y = 0
 				ite.x += 1
 			}
+		}
+	}
+}
+
+load_resource :: proc(res: ^$T) {
+	info := type_info_of(T)
+	if !reflect.is_struct(info) do return
+	offsets := reflect.struct_field_offsets(T)
+	names := reflect.struct_field_names(T)
+	types := reflect.struct_field_types(T)
+	fields := soa_zip(offset=offsets, name=names, type=types)
+
+	for f in fields {
+		using f
+		if type.id == typeid_of(rl.Texture) {
+			ptr :^rl.Texture = cast(^rl.Texture)(cast(uintptr)res+offset)
+			name := strings.trim_suffix(name, "_tex")
+			ptr^ = rl.LoadTexture(fmt.ctprintf("res/{}.png", name))
+		} else if type.id == typeid_of(rl.Sound) {
+			ptr :^rl.Sound = cast(^rl.Sound)(cast(uintptr)res+offset)
+			ptr^ = rl.LoadSound(fmt.ctprintf("res/{}.mp3", name))
+		}
+	}
+}
+
+unload_resource :: proc(res: ^$T) {
+	info := type_info_of(T)
+	if !reflect.is_struct(info) do return
+	offsets := reflect.struct_field_offsets(T)
+	names := reflect.struct_field_names(T)
+	types := reflect.struct_field_types(T)
+	fields := soa_zip(offset=offsets, name=names, type=types)
+
+	for f in fields {
+		using f
+		if type.id == typeid_of(rl.Texture) {
+			ptr :^rl.Texture = cast(^rl.Texture)(cast(uintptr)res+offset)
+			rl.UnloadTexture(ptr^)
+		} else if type.id == typeid_of(rl.Sound) {
+			ptr :^rl.Sound = cast(^rl.Sound)(cast(uintptr)res+offset)
+			rl.UnloadSound(ptr^)
 		}
 	}
 }

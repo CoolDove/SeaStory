@@ -197,22 +197,7 @@ game_init :: proc(g: ^Game) {
 	using game
 	game.land = make([dynamic][2]int, 512)
 
-	res.tower_tex = rl.LoadTexture("res/tower.png");
-	res.power_pump_tex = rl.LoadTexture("res/power_pump.png");
-	res.no_power_tex = rl.LoadTexture("res/no_power.png");
-	res.minestation_tex = rl.LoadTexture("res/minestation.png");
-	res.mother_tex = rl.LoadTexture("res/mother.png");
-	res.mask_slash = rl.LoadTexture("res/mask_slash.png")
-	res.wind_off_tex = rl.LoadTexture("res/wind_off.png")
-	res.wind_on_tex = rl.LoadTexture("res/wind_on.png")
-	res.probe_tex = rl.LoadTexture("res/probe.png")
-
-	res.bird_tex = rl.LoadTexture("res/bird.png");
-	res.puffer_tex = rl.LoadTexture("res/puffer.png");
-
-	res.select_sfx = rl.LoadSound("res/select_sfx.mp3")
-	res.escape_sfx = rl.LoadSound("res/escape_sfx.mp3")
-	res.error_sfx = rl.LoadSound("res/error_sfx.mp3")
+	load_resource(&res)
 
 	mine_interval = 1
 
@@ -281,22 +266,7 @@ game_release :: proc(using g: ^Game) {
 	delete(game.land)
 	pool.release(&game.birds_ai_buffer_pool)
 
-	rl.UnloadTexture(res.tower_tex)
-	rl.UnloadTexture(res.power_pump_tex)
-	rl.UnloadTexture(res.no_power_tex)
-	rl.UnloadTexture(res.minestation_tex)
-	rl.UnloadTexture(res.mother_tex)
-	rl.UnloadTexture(res.mask_slash)
-	rl.UnloadTexture(res.wind_off_tex)
-	rl.UnloadTexture(res.wind_on_tex)
-	rl.UnloadTexture(res.probe_tex)
-
-	rl.UnloadTexture(res.bird_tex)
-	rl.UnloadTexture(res.puffer_tex)
-
-	rl.UnloadSound(res.select_sfx)
-	rl.UnloadSound(res.escape_sfx)
-	rl.UnloadSound(res.error_sfx)
+	unload_resource(&res)
 }
 
 _game_update_dead :: proc(delta: f64) {

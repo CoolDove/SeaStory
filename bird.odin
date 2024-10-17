@@ -210,9 +210,14 @@ birdgen_release :: proc(using bg: ^BirdGenerator) {
 
 find_born :: proc(from: [2]int, target: rl.Rectangle) -> (Vec2i, bool) {
 	ite:Vec3i
+	skip:=rand.int31()%10
 	for p in ite_around(from, 12, &ite) {
 		if in_range(p) {
 			if _check(p) && _check(p+{0,1}) && _check(p+{1,0}) && _check(p+{1,1}) {
+				if skip > 0 {
+					skip -= 1
+					continue
+				}
 				return p, true
 			}
 			_check :: proc(p: Vec2i) -> bool {
