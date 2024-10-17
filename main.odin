@@ -13,6 +13,7 @@ import "core:math"
 import "core:strings"
 import "core:unicode/utf8"
 import rl "vendor:raylib"
+import tw "tween"
 
 camera : rl.Camera2D
 
@@ -132,11 +133,18 @@ main :: proc() {
 		draw_ui()
 
 		if GAME_DEBUG {
-			debug_color := rl.Color{0,255,0,255}
-			rl.DrawText(fmt.ctprintf("zoom: {}", camera.zoom), 10, 10+30, 28, debug_color)
-			rl.DrawText(fmt.ctprintf("target: {}", camera.target), 10, 10+30+30, 28, debug_color)
-			rl.DrawText(fmt.ctprintf("offset: {}", camera.offset), 10, 10+30+30*2, 28, debug_color)
-			rl.DrawText(fmt.ctprintf("hover cell: {}", game.hover_cell), 10, 10+30+30+30*2, 28, debug_color)
+			line :Vec2= {10, 10}
+			_debug_line(fmt.tprintf("zoom: {}", camera.zoom), &line)
+			_debug_line(fmt.tprintf("target: {}", camera.target), &line)
+			_debug_line(fmt.tprintf("offset: {}", camera.offset), &line)
+			_debug_line(fmt.tprintf("hover cell: {}", game.hover_cell), &line)
+			_debug_line(fmt.tprintf("tweens: {}", tw.tweener_count(&game.tweener)), &line)
+			_debug_line(fmt.tprintf("vfx: {}/{}", game.vfx.count, cap(game.vfx.buffer)), &line)
+
+			_debug_line :: proc(msg: string, line: ^Vec2) {
+				rl.DrawText(strings.clone_to_cstring(msg, context.temp_allocator), auto_cast line.x, auto_cast line.y, 28, {0,255,0,255})
+				line.y += 30
+			}
 		}
 
 		rl.EndDrawing()
@@ -164,7 +172,7 @@ ite_around :: proc(c: Vec2i, round: int, ite: ^[3]int) -> (Vec2i, bool) {
 	if s == 0 {
 		i := ite.z
 		_step(ite, round)
-		return c+{1-r+i, r}, true
+		return c+{i-r, r}, true
 	} else if s == 1 {
 		i := ite.z
 		_step(ite, round)
@@ -172,11 +180,11 @@ ite_around :: proc(c: Vec2i, round: int, ite: ^[3]int) -> (Vec2i, bool) {
 	} else if s == 2 {
 		i := ite.z
 		_step(ite, round)
-		return c+{r-1-i, -r}, true
+		return c+{r-i, -r}, true
 	} else if s == 3 {
 		i := ite.z
 		_step(ite, round)
-		return c+{r, r-1+i}, true
+		return c+{-r, -r+i}, true
 	}
 	return {}, false
 

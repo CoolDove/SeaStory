@@ -45,8 +45,8 @@ Building_VTable_Empty :Building_VTable(Building)= {
 	draw = proc(building: ^Building) {},
 	extra_draw = proc(building: ^Building) {},
 
-	init = proc(b: ^Building) {},
-	release = proc(b: ^Building) {},
+	init = proc(building: ^Building) {},
+	release = proc(building: ^Building) {},
 
 	_is_place_on_water = proc() -> bool { return false },
 	_define_hitpoint = proc() -> int { return 150 }
@@ -60,6 +60,7 @@ _building_vtable :: proc(t: typeid) -> ^Building_VTable(Building) {
 	if t == Mother do return auto_cast &_Mother_VTable
 	if t == Wind do return auto_cast &_Wind_VTable
 	if t == Probe do return auto_cast &_Probe_VTable
+	if t == FogTower do return auto_cast &_FogTower_VTable
 	return nil
 }
 
@@ -111,6 +112,7 @@ building_get_cost :: proc(bt: typeid) -> int {
 	if bt == Minestation do return 100
 	if bt == Wind do return 50
 	if bt == Probe do return 30
+	if bt == FogTower do return 240
 	return 0
 }
 // second
@@ -120,6 +122,7 @@ building_get_colddown :: proc(bt: typeid) -> f64 {
 	if bt == Minestation do return 6
 	if bt == Wind do return 1
 	if bt == Probe do return 20
+	if bt == FogTower do return 10
 	return 0
 }
 

@@ -82,3 +82,30 @@ vfx_boom :: proc(center: Vec2, range: f32, duration: f32) {
 	boom.range = range
 	tw.tween(&game.tweener, &boom.life, 0, duration, tw.ease_outcirc)
 }
+
+vfx_impact :: proc(center: Vec2, range: f32, duration: f32) {
+	VfxImpact :: struct {
+		using __base : _VfxBase,
+		center : Vec2,
+		range : f32,
+		life : f32,
+	}
+	vfxh := hla.hla_append(&game.vfx, Vfx{})
+	vfx := hla.hla_get_pointer(vfxh)
+	vfx^ = vfx_create(
+		proc(v: ^Vfx, delta: f64) {
+			v := cast(^VfxImpact)v
+			if v.life <= 0 do v.die = true
+		},
+		epre_draw(vfx, auto_cast proc(vfx: ^VfxImpact) {
+			alpha :u8= cast(u8)(255.0 * vfx.life)
+			// rl.DrawCircleV(vfx.center, vfx.range+vfx.range*0.5*(1-vfx.life), {128,128,128, alpha/2})
+			rl.DrawCircleV(vfx.center, vfx.range*(1-vfx.life), {255,255,255, alpha})
+		})
+	)
+	impact := cast(^VfxImpact)vfx
+	impact.life = 1.0
+	impact.center = center
+	impact.range = range
+	tw.tween(&game.tweener, &impact.life, 0, duration, tw.ease_outcirc)
+}

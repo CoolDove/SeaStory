@@ -66,7 +66,7 @@ _Tower_VTable :Building_VTable(Tower)= {
 	extra_draw = proc(tower: ^Tower) {
 		draw_building_hpbar(tower)
 		if tower.powered > 0 {
-			from := tower.center - {0,1.0}
+			from := tower.center - {0, 1.2}
 			if target, ok := hla.hla_get_pointer(tower.target); ok {
 				thickness :f32= auto_cast (0.3*tower.shoot_charge/tower.shoot_interval)
 				rl.DrawLineEx(from, target.pos+{0.5,0.5}, thickness, {80, 100, 160, 128})

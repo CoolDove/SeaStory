@@ -77,6 +77,7 @@ GameResources :: struct {
 	wind_off_tex : rl.Texture,
 	wind_on_tex : rl.Texture,
 	probe_tex : rl.Texture,
+	fog_tower_tex : rl.Texture,
 
 	bird_tex : rl.Texture,
 	puffer_tex : rl.Texture,
@@ -116,8 +117,8 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) -> bool/*alive*/ {
 		append(&land, pos)
 		mining[get_index(pos)] = count_minestations(pos)
 		hitpoint[idx] = 20
-		game.mineral += 2
 		if v == 0 {
+			game.mineral += 1
 			_sweep :: proc(g: ^Game, x,y: int) {
 				if in_range(x,y) {
 					sweep(g, x,y, true)
@@ -158,6 +159,29 @@ BirdsAiBufferPool :pool.PoolImpl([dynamic]_BirdTargetCandidate)= {
 	},
 }
 
+count_around :: proc(pos: Vec2i) -> u32 {
+	check :: proc(count: ^int, x,y: int) {
+		if in_range(x,y) && game.block[get_index(x,y)] == ITEM_BOMB {
+			count ^= count^ + 1
+		}
+	}
+	x, y :int= auto_cast pos.x, auto_cast pos.y
+
+	count : int
+	check(&count, x-1, y-1)
+	check(&count, x, y-1)
+	check(&count, x+1, y-1)
+
+	check(&count, x-1, y)
+	// check(&count, x, y)
+	check(&count, x+1, y)
+
+	check(&count, x-1, y+1)
+	check(&count, x, y+1)
+	check(&count, x+1, y+1)
+	return auto_cast count
+}
+
 game_init :: proc(g: ^Game) {
 	pool.init(&g.birds_ai_buffer_pool, 0, &BirdsAiBufferPool)
 
@@ -168,26 +192,10 @@ game_init :: proc(g: ^Game) {
 	for x in 0..<BLOCK_WIDTH {
 		for y in 0..<BLOCK_WIDTH {
 			using game
-			check :: proc(count: ^int, x,y: int) {
-				if in_range(x,y) && block[get_index(x,y)] == ITEM_BOMB {
-					count ^= count^ + 1
-				}
-			}
 			x, y :int= auto_cast x, auto_cast y
 			if block[get_index(x,y)] == ITEM_BOMB do continue
-			count : int
-			check(&count, x-1, y-1)
-			check(&count, x, y-1)
-			check(&count, x+1, y-1)
-
-			check(&count, x-1, y)
-			// check(&count, x, y)
-			check(&count, x+1, y)
-
-			check(&count, x-1, y+1)
-			check(&count, x, y+1)
-			check(&count, x+1, y+1)
-			block[get_index(x,y)] = cast(u32)count
+			count := count_around({x,y})
+			block[get_index(x,y)] = count
 			if count > 0 && rand.float32() < 0.2 {
 				block[get_index(x,y)] = ITEM_QUESTION
 			}
@@ -211,6 +219,7 @@ game_init :: proc(g: ^Game) {
 	_register_building_placer(Minestation, "采集站", "E")
 	_register_building_placer(Wind, "风墙", "R")
 	_register_building_placer(Probe, "探针", "A")
+	_register_building_placer(FogTower, "雾塔", "S")
 
 	p := &game.building_placers[Probe]
 	p.colddown_time = 0
@@ -300,6 +309,9 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				}
 			}
 		}
+		if rl.IsKeyPressed(.F4) {
+			game.mineral += 100
+		}
 	}
 
 	hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
@@ -336,6 +348,9 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.A) {
 			game.current_placer = &game.building_placers[Probe]
+			rl.PlaySound(res.select_sfx)
+		} else if rl.IsKeyReleased(.S) {
+			game.current_placer = &game.building_placers[FogTower]
 			rl.PlaySound(res.select_sfx)
 		}
 	}
@@ -668,6 +683,7 @@ draw_ui :: proc() {
 	draw_mode_card(&game.building_placers[Wind], &rect)
 	rect.x += 15
 	draw_mode_card(&game.building_placers[Probe], &rect)
+	draw_mode_card(&game.building_placers[FogTower], &rect)
 
 	str_mineral := fmt.ctprintf("矿:{} (+{}/s) 地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
@@ -742,6 +758,12 @@ _DrawElem_Empty :DrawElem= {
 	free = proc(data: rawptr) {},
 }
 
+epre_draw :: proc(data: rawptr, pre_draw: proc(data: rawptr)) -> DrawElem {
+	e := _DrawElem_Empty
+	e.data = data
+	e.pre_draw = pre_draw
+	return e
+}
 edraw :: proc(data: rawptr, draw: proc(data: rawptr)) -> DrawElem {
 	e := _DrawElem_Empty
 	e.data = data
