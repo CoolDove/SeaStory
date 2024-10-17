@@ -82,7 +82,7 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 		speed = 0.8
 		speed_scaler = 1.0
 
-		b.range = 1
+		b.range = 0.7
 	},
 	prepare = proc(b: ^PufferBird, target: rl.Rectangle) {
 		if _find_target(b, target) {

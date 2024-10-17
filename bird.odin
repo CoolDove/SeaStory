@@ -66,7 +66,12 @@ BirdGenerator :: struct {
 }
 
 BirdWave :: struct {
-	using config : EnemyWaveConfig,
+	batches : []BirdBatch,
+	time : f64,
+}
+
+BirdBatch :: struct {
+	using config : EnemyBatch,
 	born : rl.Rectangle,
 	target : rl.Rectangle,
 }
@@ -145,25 +150,30 @@ birdgen_is_working :: proc(bg: ^BirdGenerator) -> bool {
 birdgen_set :: proc(bg: ^BirdGenerator, config: EnemyWaveConfig) {
 	wave : BirdWave
 	if len(game.land) == 0 do return
-	wave.config = config
-	ite : int
-	mother : Vec2i
-	for b in hla.ite_alive_value(&game.buildings, &ite) {
-		if b.type == Mother {
-			mother = b.position
+
+	wave.batches = make([]BirdBatch, len(config.enemies))
+	wave.time = config.time
+	for enemy_batch_config, i in config.enemies {
+		wave.batches[i].config = enemy_batch_config
+		batch := &wave.batches[i]
+		ite : int
+		mother : Vec2i
+		for b in hla.ite_alive_value(&game.buildings, &ite) {
+			if b.type == Mother {
+				mother = b.position
+			}
+		}
+		offset :Vec2i= {cast(int)rand.int31()%4, cast(int)rand.int31()%4}
+		w := cast(f32)math.min(4, cast(int)BLOCK_WIDTH-(mother.x-offset.x))
+		h := cast(f32)math.min(4, cast(int)BLOCK_WIDTH-(mother.y-offset.y))
+		batch.target = {cast(f32)(mother.x-offset.x), cast(f32)(mother.y-offset.y), w, h}
+
+		if bornpos, ok := find_born({auto_cast batch.target.x, auto_cast batch.target.y}, batch.target); ok {
+			batch.born = {cast(f32)bornpos.x, cast(f32)bornpos.y, 2,2} 
+		} else {
+			batch.born = batch.target
 		}
 	}
-	offset :Vec2i= {cast(int)rand.int31()%4, cast(int)rand.int31()%4}
-	w := cast(f32)math.min(4, cast(int)BLOCK_WIDTH-(mother.x-offset.x))
-	h := cast(f32)math.min(4, cast(int)BLOCK_WIDTH-(mother.y-offset.y))
-	wave.target = {cast(f32)(mother.x-offset.x), cast(f32)(mother.y-offset.y), w, h}
-
-	if bornpos, ok := find_born({auto_cast wave.target.x, auto_cast wave.target.y}, wave.target); ok {
-		wave.born = {cast(f32)bornpos.x, cast(f32)bornpos.y, 2,2} 
-	} else {
-		wave.born = wave.target
-	}
-
 	bg.wave = wave
 }
 
@@ -173,14 +183,15 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 	if wave.time > 0 {
 		wave.time -= delta
 		if wave.time <= 0 {// generate birds
-			for e in wave.enemies {
-				for i in 0..<e.count {
-					pos :Vec2= {rand.float32()*wave.born.width+wave.born.x, rand.float32()*wave.born.height+wave.born.y}
-					b := game_add_bird(g, e.type, pos)
+			for batch in wave.batches {
+				for i in 0..<batch.count {
+					pos :Vec2= {rand.float32()*batch.born.width+batch.born.x, rand.float32()*batch.born.height+batch.born.y}
+					b := game_add_bird(g, batch.type, pos)
 					bird := hla.hla_get_pointer(b)
-					bird->prepare(wave.target)
+					bird->prepare(batch.target)
 				}
 			}
+			delete(wave.batches)
 			wave.time = 0
 		}
 	}
@@ -207,7 +218,9 @@ find_born :: proc(from: [2]int, target: rl.Rectangle) -> (Vec2i, bool) {
 
 birdgen_draw :: proc(bg: ^BirdGenerator) {
 	if bg.wave.time != 0 {
-		rl.DrawRectangleRoundedLines(bg.wave.born, 0.6, 8, .1, {120,120,60, 128})
-		rl.DrawRectangleRoundedLines(bg.wave.target, 0.6, 8, .1, {200,60,60, 128})
+		for batch in bg.wave.batches {
+			rl.DrawRectangleRoundedLines(batch.born, 0.6, 8, .1, {120,120,60, 128})
+			rl.DrawRectangleRoundedLines(batch.target, 0.6, 8, .1, {200,60,60, 128})
+		}
 	}
 }
