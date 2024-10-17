@@ -79,6 +79,7 @@ GameResources :: struct {
 	wind_on_tex : rl.Texture,
 	probe_tex : rl.Texture,
 	fog_tower_tex : rl.Texture,
+	cannon_tower_tex : rl.Texture,
 
 	bird_tex : rl.Texture,
 	puffer_tex : rl.Texture,
@@ -216,12 +217,13 @@ game_init :: proc(g: ^Game) {
 	vfx = hla.hla_make(Vfx, 16)
 
 	building_placers = make(map[typeid]BuildingPlacer)
-	_register_building_placer(Tower, "炮塔", "Q")
+	_register_building_placer(Tower, "激光塔", "Q")
 	_register_building_placer(PowerPump, "能量泵", "W")
 	_register_building_placer(Minestation, "采集站", "E")
 	_register_building_placer(Wind, "风墙", "R")
 	_register_building_placer(Probe, "探针", "A")
 	_register_building_placer(FogTower, "雾塔", "S")
+	_register_building_placer(CannonTower, "炮塔", "D")
 
 	p := &game.building_placers[Probe]
 	p.colddown_time = 0
@@ -353,6 +355,9 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.S) {
 			game.current_placer = &game.building_placers[FogTower]
+			rl.PlaySound(res.select_sfx)
+		} else if rl.IsKeyReleased(.D) {
+			game.current_placer = &game.building_placers[CannonTower]
 			rl.PlaySound(res.select_sfx)
 		}
 	}
@@ -486,7 +491,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	ite:int
 	for vfx, handle in hla.ite_alive_ptr_handle(&game.vfx, &ite) {
-		if vfx.die {
+		if vfx.life >= vfx.duration {
 			hla.hla_remove_handle(handle)
 		}
 	}
@@ -690,6 +695,7 @@ draw_ui :: proc() {
 	rect.x += 15
 	draw_mode_card(&game.building_placers[Probe], &rect)
 	draw_mode_card(&game.building_placers[FogTower], &rect)
+	draw_mode_card(&game.building_placers[CannonTower], &rect)
 
 	str_mineral := fmt.ctprintf("矿:{} (+{}/s) 地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
@@ -725,13 +731,14 @@ draw_ui :: proc() {
 		rl.DrawTextEx(FONT_DEFAULT, name, {rect.x+0.5*rect.width-0.5*measure.x, rect.y} + {0, measure.y - 20}, 20, 1, rl.BLUE if is_water_place else rl.BLACK)
 
 		measure = rl.MeasureTextEx(FONT_DEFAULT, key, 20, 1)
-		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x+rect.width-measure.x, rect.y + rect.height - 20}, 20, 1, rl.GRAY)
+		rl.DrawTextEx(FONT_DEFAULT, key, {rect.x+rect.width-measure.x-4, rect.y + rect.height - 20}, 20, 1, rl.GRAY)
 
 		if transmute(int)building_type != 0 {
 			cost := building_get_cost(building_type)
 			color := rl.GREEN if cost <= game.mineral else rl.RED
 			str := fmt.ctprintf("{}", cost)
-			position :Vec2= {rect.x, rect.y + rect.width - 20}
+			position :Vec2= {rect.x+5, rect.y + rect.width - 20}
+			rl.DrawTextEx(FONT_DEFAULT, str, position+{1,1}, 20, 1, {0,0,0, 64})
 			rl.DrawTextEx(FONT_DEFAULT, str, position, 20, 1, color)
 		}
 

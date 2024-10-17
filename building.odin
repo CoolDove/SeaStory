@@ -66,6 +66,7 @@ _building_vtable :: proc(t: typeid) -> ^Building_VTable(Building) {
 	if t == Wind do return auto_cast &_Wind_VTable
 	if t == Probe do return auto_cast &_Probe_VTable
 	if t == FogTower do return auto_cast &_FogTower_VTable
+	if t == CannonTower do return auto_cast &_CannonTower_VTable
 	return nil
 }
 
@@ -112,22 +113,24 @@ building_release :: proc(b: ^Building) {
 }
 
 building_get_cost :: proc(bt: typeid) -> int {
-	if bt == Tower do return 180
-	if bt == PowerPump do return 100
-	if bt == Minestation do return 100
+	if bt == Tower do return 150
+	if bt == PowerPump do return 60
+	if bt == Minestation do return 40
 	if bt == Wind do return 50
-	if bt == Probe do return 30
-	if bt == FogTower do return 240
+	if bt == Probe do return 15
+	if bt == FogTower do return 180
+	if bt == CannonTower do return 80
 	return 0
 }
 // second
 building_get_colddown :: proc(bt: typeid) -> f64 {
-	if bt == Tower do return 5
+	if bt == Tower do return 10
 	if bt == PowerPump do return 3
 	if bt == Minestation do return 6
 	if bt == Wind do return 1
 	if bt == Probe do return 20
-	if bt == FogTower do return 10
+	if bt == FogTower do return 15
+	if bt == CannonTower do return 5
 	return 0
 }
 
