@@ -55,3 +55,30 @@ vfx_number :: proc(p: Vec2, n: int, color:rl.Color) {
 	num.center = p+{0.5,0.5}
 	tw.tween(&game.tweener, &num.life, 0, 0.6, tw.ease_inoutcirc)
 }
+
+vfx_boom :: proc(center: Vec2, range: f32, duration: f32) {
+	VfxBoom :: struct {
+		using __base : _VfxBase,
+		center : Vec2,
+		range : f32,
+		life : f32,
+	}
+	vfxh := hla.hla_append(&game.vfx, Vfx{})
+	vfx := hla.hla_get_pointer(vfxh)
+	vfx^ = vfx_create(
+		proc(v: ^Vfx, delta: f64) {
+			v := cast(^VfxBoom)v
+			if v.life <= 0 do v.die = true
+		},
+		eextra_draw(vfx, auto_cast proc(vfx: ^VfxBoom) {
+			alpha :u8= cast(u8)(255.0 * vfx.life)
+			rl.DrawCircleV(vfx.center, vfx.range+vfx.range*0.5*(1-vfx.life), {128,128,128, alpha/2})
+			rl.DrawCircleV(vfx.center, vfx.range, {255,255,255, alpha})
+		})
+	)
+	boom := cast(^VfxBoom)vfx
+	boom.life = 1.0
+	boom.center = center
+	boom.range = range
+	tw.tween(&game.tweener, &boom.life, 0, duration, tw.ease_outcirc)
+}

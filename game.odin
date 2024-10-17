@@ -415,6 +415,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			// ** sweep
 			if !sweep(&game, x, y) {
 				rl.PlaySound(res.error_sfx)
+				vfx_boom(get_center(hover_cell)+{0.5,0.5}, 1.35, 0.6)
 				_blow_cell(hover_cell+{-1,-1})
 				_blow_cell(hover_cell+{0,-1})
 				_blow_cell(hover_cell+{1,-1})

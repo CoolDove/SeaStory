@@ -52,6 +52,10 @@ get_indexv :: proc(pos: Vec2i) -> int {
 	return pos.x+pos.y*(auto_cast BLOCK_WIDTH)
 }
 
+get_center :: proc(v: Vec2i) -> Vec2 {
+	return {auto_cast v.x, auto_cast v.y}
+}
+
 in_range :: proc {
 	in_rangei,
 	in_rangev,

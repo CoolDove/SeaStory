@@ -37,31 +37,7 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 					if linalg.distance(building.center, pos) < 2 {
 						building.hitpoint -= attack
 						vfx_number(b.pos, attack, ENEMY_ATK_COLOR)
-
-						VfxBoom :: struct {
-							using __base : _VfxBase,
-							center : Vec2,
-							range : f32,
-							life : f32,
-						}
-						vfxh := hla.hla_append(&game.vfx, Vfx{})
-						vfx := hla.hla_get_pointer(vfxh)
-						vfx^ = vfx_create(
-							proc(v: ^Vfx, delta: f64) {
-								v := cast(^VfxBoom)v
-								if v.life <= 0 do v.die = true
-							},
-							eextra_draw(vfx, auto_cast proc(vfx: ^VfxBoom) {
-								alpha :u8= cast(u8)(255.0 * vfx.life)
-								rl.DrawCircleV(vfx.center, vfx.range+vfx.range*0.5*(1-vfx.life), {128,128,128, alpha/2})
-								rl.DrawCircleV(vfx.center, vfx.range, {255,255,255, alpha})
-							})
-						)
-						boom := cast(^VfxBoom)vfx
-						boom.life = 1.0
-						boom.center = b.pos+{0.5,0.5}
-						boom.range = auto_cast b.range
-						tw.tween(&game.tweener, &boom.life, 0, 0.6, tw.ease_outcirc)
+						vfx_boom(b.pos+{0.5,0.5}, auto_cast b.range, 0.6)
 					}
 				}
 			}
