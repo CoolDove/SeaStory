@@ -125,8 +125,8 @@ building_get_cost :: proc(bt: typeid) -> int {
 // second
 building_get_colddown :: proc(bt: typeid) -> f64 {
 	if bt == Tower do return 10
-	if bt == PowerPump do return 3
-	if bt == Minestation do return 6
+	if bt == PowerPump do return 5
+	if bt == Minestation do return 12
 	if bt == Wind do return 1
 	if bt == Probe do return 20
 	if bt == FogTower do return 15

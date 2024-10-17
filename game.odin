@@ -217,13 +217,13 @@ game_init :: proc(g: ^Game) {
 	vfx = hla.hla_make(Vfx, 16)
 
 	building_placers = make(map[typeid]BuildingPlacer)
-	_register_building_placer(Tower, "激光塔", "Q")
-	_register_building_placer(PowerPump, "能量泵", "W")
-	_register_building_placer(Minestation, "采集站", "E")
+	_register_building_placer(CannonTower, "炮塔", "Q")
+	_register_building_placer(Tower, "激光塔", "W")
+	_register_building_placer(FogTower, "驱雾塔", "E")
 	_register_building_placer(Wind, "风墙", "R")
 	_register_building_placer(Probe, "探针", "A")
-	_register_building_placer(FogTower, "雾塔", "S")
-	_register_building_placer(CannonTower, "炮塔", "D")
+	_register_building_placer(PowerPump, "能量泵", "S")
+	_register_building_placer(Minestation, "采集站", "D")
 
 	p := &game.building_placers[Probe]
 	p.colddown_time = 0
@@ -339,13 +339,13 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		rl.PlaySound(res.escape_sfx)
 	} else {
 		if rl.IsKeyReleased(.Q) {
-			game.current_placer = &game.building_placers[Tower]
+			game.current_placer = &game.building_placers[CannonTower]
 			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.W) {
-			game.current_placer = &game.building_placers[PowerPump]
+			game.current_placer = &game.building_placers[Tower]
 			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.E) {
-			game.current_placer = &game.building_placers[Minestation]
+			game.current_placer = &game.building_placers[FogTower]
 			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.R) {
 			game.current_placer = &game.building_placers[Wind]
@@ -354,10 +354,10 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			game.current_placer = &game.building_placers[Probe]
 			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.S) {
-			game.current_placer = &game.building_placers[FogTower]
+			game.current_placer = &game.building_placers[PowerPump]
 			rl.PlaySound(res.select_sfx)
 		} else if rl.IsKeyReleased(.D) {
-			game.current_placer = &game.building_placers[CannonTower]
+			game.current_placer = &game.building_placers[Minestation]
 			rl.PlaySound(res.select_sfx)
 		}
 	}
@@ -688,14 +688,14 @@ draw_ui :: proc() {
 
 	rect :rl.Rectangle= { 10, viewport.y - card_height - 10, card_width, card_height }
 
+	draw_mode_card(&game.building_placers[CannonTower], &rect)
 	draw_mode_card(&game.building_placers[Tower], &rect)
-	draw_mode_card(&game.building_placers[PowerPump], &rect)
-	draw_mode_card(&game.building_placers[Minestation], &rect)
+	draw_mode_card(&game.building_placers[FogTower], &rect)
 	draw_mode_card(&game.building_placers[Wind], &rect)
 	rect.x += 15
 	draw_mode_card(&game.building_placers[Probe], &rect)
-	draw_mode_card(&game.building_placers[FogTower], &rect)
-	draw_mode_card(&game.building_placers[CannonTower], &rect)
+	draw_mode_card(&game.building_placers[PowerPump], &rect)
+	draw_mode_card(&game.building_placers[Minestation], &rect)
 
 	str_mineral := fmt.ctprintf("矿:{} (+{}/s) 地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
 	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
@@ -750,7 +750,13 @@ draw_ui :: proc() {
 	}
 	// draw dead
 	if game.dead {
-		rl.DrawTextEx(FONT_DEFAULT, "YOU LOSE", {40, 140}, 48, 0, rl.BLACK)
+		msg := fmt.ctprintf("游戏结束，你坚守了{}波攻击", game.level)
+		measure := rl.MeasureTextEx(FONT_DEFAULT, msg, 48, 0)
+		w, h := cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()
+		pos :Vec2= {(w-measure.x)*0.5, (h-measure.y)*0.5}
+		rl.DrawRectangle(0,0, cast(i32)w, cast(i32)h, {0,0,0, 64})
+		rl.DrawTextEx(FONT_DEFAULT, msg, pos+{2,2}, 48, 0, {0,0,0, 64})
+		rl.DrawTextEx(FONT_DEFAULT, msg, pos, 48, 0, rl.ORANGE)
 	}
 }
 
