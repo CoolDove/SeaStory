@@ -14,6 +14,7 @@ import "core:strings"
 import hla "collections/hollow_array"
 import pool "collections/pool"
 import rl "vendor:raylib"
+import tw "tween"
 
 Game :: struct {
 	block : [BLOCK_WIDTH*BLOCK_WIDTH]u32,
@@ -33,6 +34,10 @@ Game :: struct {
 	level : int,
 
 	time : f64,
+
+	tweener : tw.Tweener,
+
+	vfx : hla.HollowArray(Vfx),
 
 	// gameplay
 	mineral : int,
@@ -213,6 +218,7 @@ game_init :: proc(g: ^Game) {
 
 	buildings = hla.hla_make(^Building, 32)
 	birds = hla.hla_make(Bird, 16)
+	vfx = hla.hla_make(Vfx, 16)
 
 	building_placers = make(map[typeid]BuildingPlacer)
 	_register_building_placer(Tower, "炮塔", "Q")
@@ -251,10 +257,14 @@ game_init :: proc(g: ^Game) {
 		}
 	}
 
+	tw.tweener_init(&tweener, 16)
+
 	mineral = 500
 }
 
 game_release :: proc(using g: ^Game) {
+	tw.tweener_release(&tweener)
+
 	for b in hla.ites_alive_value(&g.buildings) {
 		building_release(b)
 		free(b)
@@ -264,6 +274,9 @@ game_release :: proc(using g: ^Game) {
 		game_kill_bird(g, b)
 	}
 	hla.hla_delete(&g.birds)
+
+	hla.hla_delete(&g.vfx)
+
 	delete(game.building_placers)
 	delete(game.land)
 	pool.release(&game.birds_ai_buffer_pool)
@@ -438,6 +451,13 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	last_position = rl.GetMousePosition()
 
+
+	tw.tweener_update(&game.tweener, cast(f32)delta)
+
+	for _vfx in hla.ites_alive_ptr(&g.vfx) {
+		_vfx->update(delta)
+	}
+
 	// ** game logic
 	for birdh in hla.ites_alive_handle(&game.birds) {// bird die
 		bird := hla.hla_get_pointer(birdh)
@@ -464,6 +484,13 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			ordered_remove(&game.land, i)
 			game.sunken[idx] = -1
 			game.mining[idx] = 0
+		}
+	}
+
+	ite:int
+	for vfx, handle in hla.ite_alive_ptr_handle(&game.vfx, &ite) {
+		if vfx.die {
+			hla.hla_remove_handle(handle)
 		}
 	}
 
@@ -545,6 +572,13 @@ game_draw :: proc(using g: ^Game) {
 	}
 
 	draw_elems := make([dynamic]DrawElem); defer delete(draw_elems)
+
+	// draw vfxs
+	for vfx in hla.ites_alive_ptr(&g.vfx) {
+		e := (cast(^DrawElem)vfx)^
+		e.data = vfx
+		append(&draw_elems, e)
+	}
 
 	// draw birds
 	for bird in hla.ites_alive_ptr(&g.birds) {
@@ -727,7 +761,6 @@ draw_ui :: proc() {
 	if game.dead {
 		rl.DrawTextEx(FONT_DEFAULT, "YOU LOSE", {40, 140}, 48, 0, rl.BLACK)
 	}
-
 }
 
 DrawElem :: struct {
@@ -737,4 +770,19 @@ DrawElem :: struct {
 	draw : proc(data: rawptr),
 	extra_draw : proc(data: rawptr),
 	free : proc(data: rawptr)
+}
+_DrawElem_Empty :DrawElem= {
+	data = nil,
+	order = 0,
+	pre_draw = proc(data: rawptr) {},
+	draw = proc(data: rawptr) {},
+	extra_draw = proc(data: rawptr) {},
+	free = proc(data: rawptr) {},
+}
+
+edraw :: proc(data: rawptr, draw: proc(data: rawptr)) -> DrawElem {
+	e := _DrawElem_Empty
+	e.data = data
+	e.draw = draw
+	return e
 }

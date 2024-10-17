@@ -165,6 +165,13 @@ ite_alive_handle :: proc(using hla: ^HollowArray($T), index: ^int) -> (HollowArr
 	}
 	return {}, false
 }
+ite_alive_ptr_handle :: proc(using hla: ^HollowArray($T), index: ^int) -> (^T, HollowArrayHandle(T), bool) {
+	handle, ok := ite_alive_handle(hla, index)
+	if ok {
+		return hla_get_pointer(handle), handle, true
+	}
+	return nil, {}, false
+}
 
 ites_alive_hvalue :: proc(using hla: ^HollowArray($T)) -> (^HollowArrayValue(T), bool) {
 	return ite_alive_hvalue(hla, &hla.__ite)
@@ -178,7 +185,6 @@ ites_alive_ptr :: proc(using hla: ^HollowArray($T)) -> (^T, bool) {
 ites_alive_handle :: proc(using hla: ^HollowArray($T)) -> (HollowArrayHandle(T), bool) {
 	return ite_alive_handle(hla, &hla.__ite)
 }
-
 
 HollowArrayIterator :: struct {
 	next_buffer_idx, next_alive_idx : int,

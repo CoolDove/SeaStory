@@ -72,7 +72,6 @@ BlackBird_VTable :_Bird_VTable(BlackBird)= {
 		attack = 6
 		speed = 1.2
 		speed_scaler = 1.0
-		fmt.printf("black bird init\n")
 	},
 	prepare = proc(using b: ^BlackBird, target: rl.Rectangle) {
 		t := target
