@@ -134,6 +134,7 @@ main :: proc() {
 
 		if GAME_DEBUG {
 			line :Vec2= {10, 10}
+			_debug_line(fmt.tprintf("current seed: {}", game.current_seed), &line)
 			_debug_line(fmt.tprintf("zoom: {}", camera.zoom), &line)
 			_debug_line(fmt.tprintf("target: {}", camera.target), &line)
 			_debug_line(fmt.tprintf("offset: {}", camera.offset), &line)

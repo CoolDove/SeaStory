@@ -11,7 +11,6 @@ import hla "collections/hollow_array"
 Tower :: struct {
 	using _ : Building,
 	// define
-	range : f64,
 	shoot_interval : f64,
 
 	// run
@@ -57,6 +56,9 @@ _Tower_VTable :Building_VTable(Tower)= {
 			rl.DrawCircleV(tower.center, auto_cast tower.range, {200, 100, 80, cast(u8)(64.0*math.abs(math.sin(game.time))+64.0)})
 			rl.DrawCircleLinesV(tower.center, auto_cast tower.range, {255, 100, 100, 128})
 		}
+	},
+	preview_draw = proc(pos: Vec2i) {
+		rl.DrawCircleLinesV(get_center(pos), 4, {255, 100, 100, 128})
 	},
 	draw = proc(tower: ^Tower) {
 		tex := game.res.tower_tex

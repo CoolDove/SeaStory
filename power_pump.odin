@@ -10,7 +10,6 @@ import hla "collections/hollow_array"
 
 PowerPump :: struct {
 	using _ : Building,
-	range : f64,
 }
 
 @private
@@ -42,6 +41,9 @@ _PowerPump_VTable :Building_VTable(PowerPump)= {
 	},
 	extra_draw = proc(power_pump: ^PowerPump) {
 		draw_building_hpbar(power_pump)
+	},
+	preview_draw = proc(pos: Vec2i) {
+		rl.DrawCircleLinesV(get_center(pos), 5, {255, 100, 100, 128})
 	},
 	init = proc(power_pump: ^PowerPump) {
 		power_pump.range = 5

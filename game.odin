@@ -24,6 +24,7 @@ Game :: struct {
 	sunken : [BLOCK_WIDTH*BLOCK_WIDTH]int, // 0: not sunken, -1: sunken, other: recovering
 	buildingmap : [BLOCK_WIDTH*BLOCK_WIDTH]^Building,
 	dead : bool,
+	current_seed : u64,
 
 	buildings : hla.HollowArray(^Building),
 	birds : hla.HollowArray(Bird),
@@ -187,7 +188,8 @@ game_init :: proc(g: ^Game) {
 
 	// generate map
 	for i in 0..<160 do game.block[i] = ITEM_BOMB
-	rand.reset(transmute(u64)time.tick_now())
+	game.current_seed = cast(u64)rand.int31()%9999
+	rand.reset(game.current_seed)
 	rand.shuffle(game.block[:])
 	for x in 0..<BLOCK_WIDTH {
 		for y in 0..<BLOCK_WIDTH {
@@ -555,14 +557,18 @@ game_draw :: proc(using g: ^Game) {
 		}
 	}
 
-	// rl.DrawLine(-100, 0, 100, 0, rl.Color{255,255,0, 255})
-	// rl.DrawLine(0, -100, 0, 100, rl.Color{0,255,0, 255})
-
 	// draw cursor
 	if in_range(hover_cell.x, hover_cell.y) {
 		hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
 		rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
 		if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
+
+		if placeable && current_placer != nil {
+			vtable := _building_vtable(current_placer.building_type)
+			if vtable.preview_draw != nil {
+				vtable.preview_draw(hover_cell)
+			}
+		}
 	}
 
 	draw_elems := make([dynamic]DrawElem); defer delete(draw_elems)

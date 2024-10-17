@@ -16,7 +16,6 @@ Minestation :: struct {
 	using _ : Building,
 
 	_poweron : bool,
-	range : int,
 	collect_interval : f64,
 	collect_time : f64,
 	collect_amount : int,
@@ -40,8 +39,8 @@ _Minestation_VTable :Building_VTable(Minestation)= {
 		}
 		_poweron = poweron
 	},
-	init = proc(station: ^Minestation) {
-		station.range = 4
+	init = proc(using station: ^Minestation) {
+		range = 4
 	},
 	release = proc(station: ^Minestation) {
 		bx, by := station.position.x, station.position.y
@@ -62,6 +61,9 @@ _Minestation_VTable :Building_VTable(Minestation)= {
 		if station.powered <= 0 {
 			draw_building_nopower(station)
 		}
+	},
+	preview_draw = proc(pos: Vec2i) {
+		rl.DrawCircleLinesV(get_center(pos), 4, {255, 100, 100, 128})
 	},
 	_is_place_on_water = proc() -> bool {
 		return true
@@ -87,15 +89,15 @@ count_minestations :: proc(pos: Vec2i) -> int {
 
 minestation_for_available_cells :: proc(s: ^Minestation, process: proc(p:Vec2i)) {
 	bx, by := s.position.x, s.position.y
-	range := cast(f32)s.range
-	for x:=1; x<2*(s.range+1); x+=1 {
+	range := cast(int)s.range
+	for x:=1; x<2*(range+1); x+=1 {
 		X := bx + (1 if x%2==0 else -1) * x/2
-		for y:=1; y<2*(s.range+1); y+=1 {
+		for y:=1; y<2*(range+1); y+=1 {
 			using linalg
 			Y := by + (1 if y%2==0 else -1) * y/2
 			idx := get_index(X,Y)
 			center := Vec2{cast(f32)X+0.5,cast(f32)Y+0.5}
-			if game.sunken[idx] == 0 && in_range(X,Y) && distance(s.center, center) <= range {
+			if game.sunken[idx] == 0 && in_range(X,Y) && distance(s.center, center) <= cast(f32)range {
 				process({X,Y})
 			}
 		}

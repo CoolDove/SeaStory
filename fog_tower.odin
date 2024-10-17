@@ -11,7 +11,6 @@ import hla "collections/hollow_array"
 FogTower :: struct {
 	using _ : Building,
 	// define
-	range : f64,
 	shoot_interval : f64,
 
 	// run
@@ -89,6 +88,9 @@ _FogTower_VTable :Building_VTable(FogTower)= {
 				}
 			}
 		}
+	},
+	preview_draw = proc(pos: Vec2i) {
+		rl.DrawCircleLinesV(get_center(pos), 4, {255, 100, 100, 128})
 	},
 
 	init = proc(using ftower: ^FogTower) {

@@ -21,6 +21,7 @@ Building :: struct {
 	type : typeid,
 
 	powered : int,// how many powerpump for this building
+	range : f64,
 
 	using _vtable : ^Building_VTable(Building),
 	extra : rawptr,
@@ -31,6 +32,8 @@ Building_VTable :: struct($T:typeid) {
 	pre_draw : proc(building: ^T),
 	draw : proc(building: ^T),
 	extra_draw : proc(building: ^T),
+
+	preview_draw : proc(pos: Vec2i),
 
 	init : proc(b: ^T),
 	release : proc(b: ^T),
@@ -44,6 +47,8 @@ Building_VTable_Empty :Building_VTable(Building)= {
 	pre_draw = proc(building: ^Building) {},
 	draw = proc(building: ^Building) {},
 	extra_draw = proc(building: ^Building) {},
+
+	preview_draw = proc(pos: Vec2i) {},
 
 	init = proc(building: ^Building) {},
 	release = proc(building: ^Building) {},
