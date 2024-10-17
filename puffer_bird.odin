@@ -67,7 +67,9 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 			}
 		}
 	},
-	pre_draw = proc(b: ^PufferBird) {},
+	pre_draw = proc(b: ^PufferBird) {
+		_bird_pre_draw(auto_cast b)
+	},
 	draw = proc(b: ^PufferBird) {
 		_bird_draw(auto_cast b, game.res.puffer_tex)
 	},
@@ -112,7 +114,7 @@ _find_target :: proc(b: ^PufferBird, target: rl.Rectangle) -> bool {
 
 	_bird_sort_candidates(candidates_buffer[:])
 
-	des := candidates_buffer[0]
+	des := candidates_buffer[math.min(cast(int)rand.int31()%4, len(candidates_buffer)-1)]
 	x, y := des.position.x, des.position.y
 	b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y + rand.float32()*0.1}
 

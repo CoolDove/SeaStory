@@ -111,14 +111,19 @@ _bird_sort_candidates :: proc(buffer: []_BirdTargetCandidate) {
 	})
 }
 
+_bird_pre_draw :: proc(b: ^Bird) {
+	if rl.IsKeyDown(.LEFT_SHIFT) {
+		rl.DrawLineEx(b.pos+{0.5, 0.5}, b.destination+{0.5, 0.5}, 0.15, {255,0,0, 80})
+	}
+}
 _bird_draw :: proc(b: ^Bird, tex: rl.Texture) {
 	x,y := b.pos.x, b.pos.y
 	rl.DrawTexturePro(tex, {0,0,32,32}, {x+0.2,y+0.2, 1,1}, {0,0}, 0, {0,0,64,64})// shadow
 	rl.DrawTexturePro(tex, {0,0,32,32}, {x,y, 1,1}, {0,0}, 0, rl.WHITE)
 }
 _bird_extra_draw :: proc(b: ^Bird) {
-	if GAME_DEBUG || rl.IsKeyDown(.LEFT_SHIFT) {
-		rl.DrawLineV(b.pos+{0.5, 0.5}, b.destination+{0.5, 0.5}, {255,0,0, 64})
+	if GAME_DEBUG {
+		rl.DrawLineEx(b.pos+{0.5, 0.5}, b.destination+{0.5, 0.5}, 0.05, {255,0,0, 64})
 	}
 }
 
@@ -197,10 +202,6 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 	}
 }
 
-_birdgen_find_born :: proc(bg: ^BirdGenerator, target: rl.Rectangle) -> rl.Rectangle {
-	return {}
-}
-
 find_born :: proc(from: [2]int, target: rl.Rectangle) -> (Vec2i, bool) {
 	ite:Vec3i
 	for p in ite_around(from, 12, &ite) {
@@ -221,6 +222,14 @@ birdgen_draw :: proc(bg: ^BirdGenerator) {
 		for batch in bg.wave.batches {
 			rl.DrawRectangleRoundedLines(batch.born, 0.6, 8, .1, {120,120,60, 128})
 			rl.DrawRectangleRoundedLines(batch.target, 0.6, 8, .1, {200,60,60, 128})
+			using batch
+			from :Vec2= {born.x, born.y} + 0.5 * { born.width, born.height }
+			to :Vec2= {target.x, target.y} + 0.5 * { target.width, target.height }
+			rl.DrawLineEx(from, to, 0.2, {255,0,0, 64})
+			name :cstring
+			if batch.type == BlackBird do name = "乌鸦"
+			if batch.type == PufferBird do name = "河豚"
+			rl.DrawTextEx(FONT_DEFAULT, name, {born.x, born.y}+{0,0}, 1, 0.01, {255,40,40, 128})
 		}
 	}
 }

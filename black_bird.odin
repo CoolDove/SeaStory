@@ -60,6 +60,7 @@ BlackBird_VTable :_Bird_VTable(BlackBird)= {
 		}
 	},
 	pre_draw = proc(b: ^BlackBird) {
+		_bird_pre_draw(auto_cast b)
 	},
 	draw = proc(b: ^BlackBird) {
 		_bird_draw(auto_cast b, game.res.bird_tex)
@@ -117,7 +118,7 @@ _find_target :: proc(b: ^BlackBird, pos: Vec2) -> bool {
 
 	_bird_sort_candidates(candidates_buffer[:])
 
-	des := candidates_buffer[0]
+	des := candidates_buffer[math.min(cast(int)rand.int31()%4, len(candidates_buffer)-1)]
 
 	if !des.is_building do b._building_weight_adjust += 2
 	else do b._building_weight_adjust = 0
