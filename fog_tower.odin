@@ -43,6 +43,7 @@ _FogTower_VTable :Building_VTable(FogTower)= {
 					for p in ite_around(position, cast(int)range*2, &ite) {
 						idx := get_index(p)
 						if in_range(p) && game.block[idx] == ITEM_QUESTION && 
+							game.mask[idx] == FLAG_TOUCHED &&
 							linalg.distance(get_center(p), center) < cast(f32)range 
 						{
 							game.block[idx] = count_around(p)

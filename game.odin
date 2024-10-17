@@ -119,7 +119,7 @@ sweep :: proc(using g: ^Game, x,y : int, peek:= false) -> bool/*alive*/ {
 		mining[get_index(pos)] = count_minestations(pos)
 		hitpoint[idx] = 20
 		if v == 0 {
-			game.mineral += 1
+			game.mineral += 2
 			_sweep :: proc(g: ^Game, x,y: int) {
 				if in_range(x,y) {
 					sweep(g, x,y, true)
