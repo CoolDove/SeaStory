@@ -35,7 +35,7 @@ _Tower_VTable :Building_VTable= {
 				tower.target = {}
 			} else if tower.shoot_charge >= tower.shoot_interval {
 				bird := hla.hla_get_pointer(tower.target)
-				atk := 15
+				atk := 8
 				bird.hitpoint -= atk
 				tower.shoot_charge = 0
 				vfx_number(bird.pos+rand.float32()*0.1, atk, PLAYER_ATK_COLOR)
