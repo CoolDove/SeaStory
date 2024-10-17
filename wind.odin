@@ -38,13 +38,13 @@ _Wind_VTable :Building_VTable= {
 		wind := cast(^Wind)b
 	},
 	pre_draw = proc(handle: hla._HollowArrayHandle) {
-	},
-	draw = proc(handle: hla._HollowArrayHandle) {
 		using hla
 		wind := hla_get_value(transmute(hla.HollowArrayHandle(^Wind))handle)
 		tex := game.res.wind_off_tex
 		height := cast(f32) tex.height
 		rl.DrawTexturePro(tex, {0,0,32, height}, {cast(f32)wind.position.x,cast(f32)wind.position.y, 1, height/32.0}, {0,0}, 0, rl.WHITE)
+	},
+	draw = proc(handle: hla._HollowArrayHandle) {
 	},
 	extra_draw = proc(handle: hla._HollowArrayHandle) {
 		using hla

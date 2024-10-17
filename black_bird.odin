@@ -30,9 +30,6 @@ BlackBird_VTable :_Bird_VTable(BlackBird)= {
 			else do return
 		}
 
-		if b.speed_scaler < 1.0 {
-			b.speed_scaler += math.min(1, 1 * delta)
-		}
 		if b.dest_time != 0 {
 			if b.shoot_colddown > 0 {
 				b.shoot_colddown -= delta
@@ -125,6 +122,6 @@ _find_target :: proc(b: ^BlackBird, pos: Vec2) -> bool {
 	else do b._building_weight_adjust = 0
 	x := des.position.x
 	y := des.position.y
-	b.destination = {auto_cast x + rand.float32()*0.1, auto_cast y + rand.float32()*0.1}
+	b.destination = {auto_cast x + rand.float32()*0.3, auto_cast y + rand.float32()*0.3}
 	return true
 }

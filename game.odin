@@ -221,6 +221,9 @@ game_init :: proc(g: ^Game) {
 	_register_building_placer(Wind, "风墙", "R")
 	_register_building_placer(Probe, "探针", "A")
 
+	p := &game.building_placers[Probe]
+	p.colddown_time = 0
+
 	_register_building_placer :: proc(t: typeid, name, key : cstring) {
 		c := building_get_colddown(t)
 		game.building_placers[t] = {
@@ -285,7 +288,7 @@ game_release :: proc(using g: ^Game) {
 
 _game_update_dead :: proc(delta: f64) {
 	if rl.IsMouseButtonPressed(.LEFT) {
-		game_end = true
+		// game_end = true
 	}
 }
 
@@ -645,7 +648,6 @@ game_draw :: proc(using g: ^Game) {
 				}
 			}
 			if game.sunken[idx] == -1 { // sunken mask
-				// rl.DrawRectangleV(pos, {1,1}, {20, 90, 180, 128})
 				rl.DrawTexturePro(res.mask_slash, {0,0,32,32}, {pos.x,pos.y,1,1}, {0,0}, 0, {20, 90, 180, 64})
 			}
 		}
@@ -723,7 +725,7 @@ draw_ui :: proc() {
 	}
 	// draw dead
 	if game.dead {
-		rl.DrawTextEx(FONT_DEFAULT, "You lose, press mouse left to close game", {40, 140}, 48, 0, rl.BLACK)
+		rl.DrawTextEx(FONT_DEFAULT, "YOU LOSE", {40, 140}, 48, 0, rl.BLACK)
 	}
 
 }
