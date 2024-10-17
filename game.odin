@@ -264,6 +264,7 @@ game_init :: proc(g: ^Game) {
 
 game_release :: proc(using g: ^Game) {
 	tw.tweener_release(&tweener)
+	birdgen_release(&game.birdgen)
 
 	for b in hla.ites_alive_value(&g.buildings) {
 		building_release(b)

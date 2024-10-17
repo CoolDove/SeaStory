@@ -201,6 +201,12 @@ birdgen_update :: proc(g: ^Game, bg: ^BirdGenerator, delta: f64) {
 		}
 	}
 }
+birdgen_release :: proc(using bg: ^BirdGenerator) {
+	if wave.time > 0 {// generate birds
+		delete(wave.batches)
+		wave.time = 0
+	}
+}
 
 find_born :: proc(from: [2]int, target: rl.Rectangle) -> (Vec2i, bool) {
 	ite:Vec3i
