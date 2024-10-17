@@ -16,19 +16,17 @@ BlackBird :: struct {
 	attack : int,// how much damage one shoot
 	shoot_interval : f64,
 	shoot_colddown : f64,
-	_candidates_buffer : [dynamic]_BirdTargetCandidate,
 
 	// ai
 	_building_weight_adjust : int,
 }
 
-_BlackBird_VTable :Bird_VTable= {
-	update = proc(b: ^Bird, delta: f64){
-		b := cast(^BlackBird)b
+BlackBird_VTable :_Bird_VTable(BlackBird)= {
+	update = proc(using b: ^BlackBird, delta: f64){
 		g := &game
 
 		if b.dest_time == 0 {
-			if _bird_find_target(b, b.pos) do b.dest_time = g.time
+			if _find_target(b, b.pos) do b.dest_time = g.time
 			else do return
 		}
 
@@ -36,12 +34,11 @@ _BlackBird_VTable :Bird_VTable= {
 			b.speed_scaler += math.min(1, 1 * delta)
 		}
 		if b.dest_time != 0 {
-			dir := linalg.normalize(b.destination - b.pos)
-			step := b.speed*b.speed_scaler*auto_cast delta
 			if b.shoot_colddown > 0 {
 				b.shoot_colddown -= delta
 			}
-			if auto_cast linalg.distance(b.destination, b.pos) < step {
+			if _bird_move_to_destination(auto_cast b, delta) {
+				// arrived
 				if b.shoot_colddown <= 0 {// attack
 					target :Vec2i= {auto_cast b.destination.x, auto_cast b.destination.y}
 					idx := get_index(target.x, target.y)
@@ -60,28 +57,19 @@ _BlackBird_VTable :Bird_VTable= {
 					}
 					b.shoot_colddown = b.shoot_interval
 				}
-			} else {
-				b.pos += dir * auto_cast step
 			}
 		}
 	},
-	pre_draw = proc(b: ^Bird) {
+	pre_draw = proc(b: ^BlackBird) {
 	},
-	draw = proc(b: ^Bird) {
-		x,y := b.pos.x, b.pos.y
-		rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x+0.2,y+0.2, 1,1}, {0,0}, 0, {0,0,64,64})// shadow
-		rl.DrawTexturePro(game.res.bird_tex, {0,0,32,32}, {x,y, 1,1}, {0,0}, 0, rl.WHITE)
+	draw = proc(b: ^BlackBird) {
+		_bird_draw(auto_cast b, game.res.bird_tex)
 	},
-	extra_draw = proc(b: ^Bird) {
-		bird := cast(^BlackBird)b
-		if GAME_DEBUG {
-			rl.DrawLineV(bird.pos, bird.destination, {255,0,0, 64})
-		}
+	extra_draw = proc(b: ^BlackBird) {
+		_bird_extra_draw(auto_cast b)
 	},
 
-	init = proc(b: ^Bird) {
-		b := cast(^BlackBird)b
-		using b
+	init = proc(using b: ^BlackBird) {
 		hitpoint = 100
 		shoot_interval = 0.8
 		attack = 6
@@ -89,24 +77,31 @@ _BlackBird_VTable :Bird_VTable= {
 		speed_scaler = 1.0
 		fmt.printf("black bird init\n")
 	},
-	release = proc(b: ^Bird) {
-		b := cast(^BlackBird)b
-		using b
+	prepare = proc(using b: ^BlackBird, target: rl.Rectangle) {
+		t := target
+		dpos := Vec2{cast(f32)(rand.int31()%cast(i32)(t.width))+t.x, cast(f32)(rand.int31()%cast(i32)(t.height))+t.y}
+		if !_find_target(auto_cast b, dpos) {
+			b.destination = dpos
+			b.dest_time = game.time
+		}
+	},
+	release = proc(using b: ^BlackBird) {
 	},
 }
 
-_bird_find_target :: proc(b: ^BlackBird, pos: Vec2) -> bool {
+@(private="file")
+_find_target :: proc(b: ^BlackBird, pos: Vec2) -> bool {
 	g := &game
 	if len(g.land) == 0 do return false
 
 	buffer_pool := &game.birds_ai_buffer_pool
-	b._candidates_buffer = pool.get(buffer_pool)
-	defer pool.retire(buffer_pool, b._candidates_buffer)
-	clear(&b._candidates_buffer)
+	candidates_buffer := pool.get(buffer_pool)
+	defer pool.retire(buffer_pool, candidates_buffer)
+	clear(&candidates_buffer)
 	for l in game.land {
 		distance := linalg.distance(pos, Vec2{auto_cast l.x, auto_cast l.y});
 		weight := 128 - math.min(cast(int)distance, 128)
-		append(&b._candidates_buffer, _BirdTargetCandidate{ false, l, weight })
+		append(&candidates_buffer, _BirdTargetCandidate{ false, l, weight })
 	}
 	for building in hla.ites_alive_value(&game.buildings) {
 		distance := linalg.distance(pos, Vec2{auto_cast building.position.x, auto_cast building.position.y})
@@ -118,18 +113,14 @@ _bird_find_target :: proc(b: ^BlackBird, pos: Vec2) -> bool {
 		hp_percent := cast(f64)building.hitpoint/cast(f64)building.hitpoint_define
 		if hp_percent < 0.9 do weight += 1
 		if hp_percent < 0.5 do weight += 1
-		append(&b._candidates_buffer, _BirdTargetCandidate{ true, building.position, weight })
+		append(&candidates_buffer, _BirdTargetCandidate{ true, building.position, weight })
 	}
-	if len(b._candidates_buffer) == 0 do return false
+	if len(candidates_buffer) == 0 do return false
 
-	slice.sort_by_cmp(b._candidates_buffer[:], proc(a,b: _BirdTargetCandidate) -> slice.Ordering {
-		if a.weight > b.weight do return .Less
-		if a.weight < b.weight do return .Greater
-		return .Equal
-	})
+	_bird_sort_candidates(candidates_buffer[:])
 
-	des := b._candidates_buffer[0]
-	fmt.printf("find target, candidates count: {}\n", len(b._candidates_buffer))
+	des := candidates_buffer[0]
+
 	if !des.is_building do b._building_weight_adjust += 2
 	else do b._building_weight_adjust = 0
 	x := des.position.x

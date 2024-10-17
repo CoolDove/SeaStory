@@ -66,13 +66,15 @@ GameOperation :: struct {
 GameResources :: struct {
 	tower_tex : rl.Texture,
 	power_pump_tex : rl.Texture,
-	bird_tex : rl.Texture,
 	no_power_tex : rl.Texture,
 	minestation_tex : rl.Texture,
 	mother_tex : rl.Texture,
 	wind_off_tex : rl.Texture,
 	wind_on_tex : rl.Texture,
 	probe_tex : rl.Texture,
+
+	bird_tex : rl.Texture,
+	puffer_tex : rl.Texture,
 
 	mask_slash : rl.Texture,
 
@@ -85,10 +87,10 @@ Position :: struct {
 	x, y : int,
 }
 
-game_add_bird :: proc(g: ^Game, p: rl.Vector2) -> BirdHandle {
+game_add_bird :: proc(g: ^Game, T: typeid, p: rl.Vector2) -> BirdHandle {
 	b := hla.hla_append(&g.birds, Bird{})
 	bird := hla.hla_get_pointer(b)
-	bird_init(BlackBird, bird)
+	bird_init(T, bird)
 	bird.pos = p
 	return b 
 }
@@ -191,7 +193,6 @@ game_init :: proc(g: ^Game) {
 	game.land = make([dynamic][2]int, 512)
 
 	res.tower_tex = rl.LoadTexture("res/tower.png");
-	res.bird_tex = rl.LoadTexture("res/bird.png");
 	res.power_pump_tex = rl.LoadTexture("res/power_pump.png");
 	res.no_power_tex = rl.LoadTexture("res/no_power.png");
 	res.minestation_tex = rl.LoadTexture("res/minestation.png");
@@ -200,6 +201,9 @@ game_init :: proc(g: ^Game) {
 	res.wind_off_tex = rl.LoadTexture("res/wind_off.png")
 	res.wind_on_tex = rl.LoadTexture("res/wind_on.png")
 	res.probe_tex = rl.LoadTexture("res/probe.png")
+
+	res.bird_tex = rl.LoadTexture("res/bird.png");
+	res.puffer_tex = rl.LoadTexture("res/puffer.png");
 
 	res.select_sfx = rl.LoadSound("res/select_sfx.mp3")
 	res.escape_sfx = rl.LoadSound("res/escape_sfx.mp3")
@@ -262,7 +266,6 @@ game_release :: proc(using g: ^Game) {
 	pool.release(&game.birds_ai_buffer_pool)
 
 	rl.UnloadTexture(res.tower_tex)
-	rl.UnloadTexture(res.bird_tex)
 	rl.UnloadTexture(res.power_pump_tex)
 	rl.UnloadTexture(res.no_power_tex)
 	rl.UnloadTexture(res.minestation_tex)
@@ -271,6 +274,9 @@ game_release :: proc(using g: ^Game) {
 	rl.UnloadTexture(res.wind_off_tex)
 	rl.UnloadTexture(res.wind_on_tex)
 	rl.UnloadTexture(res.probe_tex)
+
+	rl.UnloadTexture(res.bird_tex)
+	rl.UnloadTexture(res.puffer_tex)
 
 	rl.UnloadSound(res.select_sfx)
 	rl.UnloadSound(res.escape_sfx)
@@ -336,7 +342,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		}
 	}
 
-	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.D) && rl.IsKeyDown(.LEFT_ALT) {
+	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.X) {
 		idx := get_index(hover_cell.x, hover_cell.y)
 		building := game.buildingmap[idx]
 		if building != nil do building.hitpoint -= 100
@@ -423,7 +429,6 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		if bird.hitpoint <= 0 {
 			bird->release()
 			hla.hla_remove_handle(birdh)
-			fmt.printf("bird die\n")
 		}
 	}
 
@@ -462,7 +467,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	// bird gen
 	if game.birds.count == 0 && !birdgen_is_working(&g.birdgen) {
-		birdgen_set(&g.birdgen, 1+2*game.level, math.max(10-0.5*cast(f64)level,1) - 1)
+		birdgen_set(&g.birdgen, enemy_config[math.min(len(enemy_config)-1, level)])
 		game.level += 1
 	}
 	birdgen_update(g, &g.birdgen, 1.0/60.0)
