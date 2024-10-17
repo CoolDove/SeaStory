@@ -301,7 +301,8 @@ game_update :: proc(using g: ^Game, delta: f64) {
 				placer.colddown_time -= 1
 				if placer.colddown_time < 0 do placer.colddown_time = 0
 			}
-		} else if rl.IsKeyPressed(.F3) {
+		}
+		if rl.IsKeyPressed(.F3) {
 			if game.birds.count == 0 {
 				if birdgen_is_working(&g.birdgen) {
 					game.birdgen.wave.time = 0.1
