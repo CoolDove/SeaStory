@@ -58,6 +58,7 @@ BuildingPlacer :: struct {
 	cost : int,
 	name, key : cstring,
 	building_type : typeid,
+	description : cstring,
 }
 
 GameOperation :: struct {
@@ -217,24 +218,25 @@ game_init :: proc(g: ^Game) {
 	vfx = hla.hla_make(Vfx, 16)
 
 	building_placers = make(map[typeid]BuildingPlacer)
-	_register_building_placer(CannonTower, "炮塔", "Q")
-	_register_building_placer(Tower, "激光塔", "W")
-	_register_building_placer(FogTower, "驱雾塔", "E")
-	_register_building_placer(Wind, "风墙", "R")
-	_register_building_placer(Probe, "探针", "A")
-	_register_building_placer(PowerPump, "能量泵", "S")
-	_register_building_placer(Minestation, "采集站", "D")
+	_register_building_placer(CannonTower, "炮塔", "Q", "缓慢发射炮弹攻击")
+	_register_building_placer(Tower, "激光塔", "W", "使用激光攻击单个敌人，持续攻击会使威力提升")
+	_register_building_placer(FogTower, "驱雾塔", "E", "发出振荡波攻击范围内的所有敌人，同时驱散迷雾")
+	_register_building_placer(Wind, "风墙", "R", "使经过的敌人减速")
+	_register_building_placer(Probe, "探针", "A", "[需要水面]探测水下的能源并自动标记")
+	_register_building_placer(PowerPump, "能量泵", "S", "[需要能源]通过水下的能源将能量辐射到范围内的其它建筑")
+	_register_building_placer(Minestation, "采集站", "D", "[需要能源]通过范围内的地块采集矿物")
 
 	p := &game.building_placers[Probe]
 	p.colddown_time = 0
 
-	_register_building_placer :: proc(t: typeid, name, key : cstring) {
+	_register_building_placer :: proc(t: typeid, name, key, desc : cstring) {
 		c := building_get_colddown(t)
 		game.building_placers[t] = {
 			c, c,
 			building_get_cost(t),
 			name, key,
-			t
+			t,
+			desc
 		}
 	}
 
@@ -686,7 +688,8 @@ draw_ui :: proc() {
 	card_width :f32= 50
 	card_height :f32= 60
 
-	rect :rl.Rectangle= { 10, viewport.y - card_height - 10, card_width, card_height }
+	rect :rl.Rectangle= { 0, viewport.y - card_height - 25, card_width, card_height }
+	rect.x = (viewport.x - 7*60) * 0.5
 
 	draw_mode_card(&game.building_placers[CannonTower], &rect)
 	draw_mode_card(&game.building_placers[Tower], &rect)
@@ -697,9 +700,14 @@ draw_ui :: proc() {
 	draw_mode_card(&game.building_placers[PowerPump], &rect)
 	draw_mode_card(&game.building_placers[Minestation], &rect)
 
-	str_mineral := fmt.ctprintf("矿:{} (+{}/s) 地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
-	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50} + {2,2}, 28, 1, {0,0,0, 64})
-	rl.DrawTextEx(FONT_DEFAULT, str_mineral, {10, viewport.y - card_height - 50}, 28, 1, rl.YELLOW)
+	{
+		str_mineral := fmt.ctprintf("矿:{} (+{}/s) \t地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
+		size :f32= 28
+		measure := rl.MeasureTextEx(FONT_DEFAULT, str_mineral, size, 1)
+		pos :Vec2= {(viewport.x-measure.x)*0.5, viewport.y - card_height - 90}
+		rl.DrawTextEx(FONT_DEFAULT, str_mineral, pos + {2,2}, size, 1, {0,0,0, 64})
+		rl.DrawTextEx(FONT_DEFAULT, str_mineral, pos, size, 1, rl.YELLOW)
+	}
 
 	if game.birdgen.wave.time > 0 {
 		str_enemy := fmt.ctprintf("第{}波敌袭: {:.1f} 秒后出现\n", game.level, game.birdgen.wave.time)
@@ -748,6 +756,18 @@ draw_ui :: proc() {
 
 		rect.x += rect.width + 10
 	}
+
+	{
+		msg :cstring= "自由模式，[鼠标左键]开启地块，[鼠标右键]标记"
+		if game.current_placer != nil do msg = fmt.ctprintf("{} - {}", game.current_placer.name, game.current_placer.description)
+		size :f32= 28
+		measure := rl.MeasureTextEx(FONT_DEFAULT, msg, size, 0)
+		w, h := cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()
+		pos :Vec2= {(w-measure.x)*0.5, h-120}
+		rl.DrawTextEx(FONT_DEFAULT, msg, pos+{2,2}, size, 0, {0,0,0, 64})
+		rl.DrawTextEx(FONT_DEFAULT, msg, pos, size, 0, {230, 210, 190, 255})
+	}
+
 	// draw dead
 	if game.dead {
 		msg := fmt.ctprintf("游戏结束，你坚守了{}波攻击", game.level)
