@@ -241,10 +241,10 @@ game_init :: proc(g: ^Game) {
 	}
 
 	{// sweep the first cell
-		for i: int; true; i += 1 {
-			p := cast(int)(BLOCK_WIDTH * BLOCK_WIDTH / 2) + cast(int)BLOCK_WIDTH/2 + (1 if i%2==0 else -1) * auto_cast i/2
-			if block[p] == 0 {
-				x, y := p%auto_cast BLOCK_WIDTH, p/auto_cast BLOCK_WIDTH
+		ite:Vec3i
+		for c in ite_around({auto_cast BLOCK_WIDTH/2, auto_cast BLOCK_WIDTH/2}, auto_cast BLOCK_WIDTH/2, &ite) {
+			if in_range(c) && block[get_index(c)] == 0 {
+				x, y := c.x, c.y
 				sweep(&game, x, y)
 				b := building_new_(Mother, {x,y})
 				h := hla.hla_append(&g.buildings, b)
