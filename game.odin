@@ -639,7 +639,7 @@ game_draw :: proc(using g: ^Game) {
 	}
 
 	// draw cursor
-	if in_range(hover_cell.x, hover_cell.y) {
+	if !mousein_ui && in_range(hover_cell.x, hover_cell.y) {
 		hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
 		rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
 		if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
@@ -756,6 +756,11 @@ game_draw :: proc(using g: ^Game) {
 	}
 }
 
+
+is_in_rect :: proc(p: Vec2, r: rl.Rectangle) -> bool {
+	return !(p.x < r.x || p.x > r.x + r.width || p.y < r.y || p.y > r.y+r.height)
+}
+
 draw_ui :: proc() {
 	viewport := Vec2{cast(f32)rl.GetScreenWidth(), cast(f32)rl.GetScreenHeight()}
 
@@ -766,6 +771,10 @@ draw_ui :: proc() {
 	rect.x = (viewport.x - 7*60) * 0.5
 
 	mousein := false
+
+	bgrect :rl.Rectangle= {rect.x - 10, viewport.y-card_height-100, 7*60+25, 150}
+	rl.DrawRectangleRec(bgrect, {0,0,0, 64})
+	mousein |= is_in_rect(rl.GetMousePosition(), bgrect)
 
 	mousein |= draw_mode_card(&game.building_placers[CannonTower], &rect)
 	mousein |= draw_mode_card(&game.building_placers[Tower], &rect)
@@ -806,8 +815,8 @@ draw_ui :: proc() {
 		}
 		// ---
 		shadow_rect := rect^
-		shadow_rect.x += 8
-		shadow_rect.y += 8
+		shadow_rect.x += 4
+		shadow_rect.y += 4
 		selected := game.current_placer == placer
 		rl.DrawRectangleRec(shadow_rect, {0,0,0, 64})
 		if selected {;
@@ -816,7 +825,7 @@ draw_ui :: proc() {
 			framer.y -= 4
 			framer.width += 8
 			framer.height += 8
-			rl.DrawRectangleRec(framer, {40, 20, 40, 200})
+			rl.DrawRectangleRec(framer, {230, 220, 40, 200})
 		}
 		rl.DrawRectangleRec(rect^, {200,200,200, 255})
 
@@ -830,11 +839,15 @@ draw_ui :: proc() {
 
 		if transmute(int)building_type != 0 {
 			cost := building_get_cost(building_type)
-			color := rl.GREEN if cost <= game.mineral else rl.RED
+			color := rl.Color{10, 200, 20, 255} if cost <= game.mineral else rl.RED
 			str := fmt.ctprintf("{}", cost)
 			position :Vec2= {rect.x+5, rect.y + rect.width - 20}
-			rl.DrawTextEx(FONT_DEFAULT, str, position+{1,1}, 20, 1, {0,0,0, 64})
-			rl.DrawTextEx(FONT_DEFAULT, str, position, 20, 1, color)
+			size :f32= 24
+			rl.DrawTextEx(FONT_DEFAULT, str, position+{1,1}, size, 1, rl.BLACK)
+			rl.DrawTextEx(FONT_DEFAULT, str, position+{-1,1}, size, 1, rl.BLACK)
+			rl.DrawTextEx(FONT_DEFAULT, str, position+{1,-1}, size, 1, rl.BLACK)
+			rl.DrawTextEx(FONT_DEFAULT, str, position+{-1,-1}, size, 1, rl.BLACK)
+			rl.DrawTextEx(FONT_DEFAULT, str, position, size, 1, color)
 		}
 
 		colddown_rect := rect^
