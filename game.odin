@@ -67,6 +67,8 @@ GameOperation :: struct {
 	last_position : rl.Vector2,
 	mouse_position_drag_start : rl.Vector2,
 
+	mousein_ui : bool,
+
 	building_placers : map[typeid]BuildingPlacer,
 	current_placer : ^BuildingPlacer,
 	placeable : bool,
@@ -434,7 +436,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		}
 	}
 
-	if rl.IsMouseButtonReleased(.RIGHT) {// place building
+	if !mousein_ui && rl.IsMouseButtonReleased(.RIGHT) {// place building
 		if current_placer != nil && placeable {
 			b := building_new_(current_placer.building_type, hover_cell)
 			h := hla.hla_append(&g.buildings, b)
@@ -448,7 +450,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		}
 	}
 
-	if rl.IsMouseButtonReleased(.LEFT) {
+	if !mousein_ui && rl.IsMouseButtonReleased(.LEFT) {
 		x, y:= hover_cell.x, hover_cell.y
 		if in_range(x, y) && game.buildingmap[get_index(x, y)] == nil {
 			// ** sweep
@@ -763,14 +765,18 @@ draw_ui :: proc() {
 	rect :rl.Rectangle= { 0, viewport.y - card_height - 25, card_width, card_height }
 	rect.x = (viewport.x - 7*60) * 0.5
 
-	draw_mode_card(&game.building_placers[CannonTower], &rect)
-	draw_mode_card(&game.building_placers[Tower], &rect)
-	draw_mode_card(&game.building_placers[FogTower], &rect)
-	draw_mode_card(&game.building_placers[Wind], &rect)
+	mousein := false
+
+	mousein |= draw_mode_card(&game.building_placers[CannonTower], &rect)
+	mousein |= draw_mode_card(&game.building_placers[Tower], &rect)
+	mousein |= draw_mode_card(&game.building_placers[FogTower], &rect)
+	mousein |= draw_mode_card(&game.building_placers[Wind], &rect)
 	rect.x += 15
-	draw_mode_card(&game.building_placers[Probe], &rect)
-	draw_mode_card(&game.building_placers[PowerPump], &rect)
-	draw_mode_card(&game.building_placers[Minestation], &rect)
+	mousein |= draw_mode_card(&game.building_placers[Probe], &rect)
+	mousein |= draw_mode_card(&game.building_placers[PowerPump], &rect)
+	mousein |= draw_mode_card(&game.building_placers[Minestation], &rect)
+
+	game.mousein_ui = mousein
 
 	{
 		str_mineral := fmt.ctprintf("矿:{} (+{}/s) \t地块:{}/{}", game.mineral, 1+game.mining_count/10, game.mining_count, len(game.land))
@@ -789,7 +795,16 @@ draw_ui :: proc() {
 		rl.DrawTextEx(FONT_DEFAULT, str_enemy, {10, 80}, 42, 1, {200,30,30, 128})
 	}
 
-	draw_mode_card :: proc(using placer: ^BuildingPlacer, rect: ^rl.Rectangle) {
+	draw_mode_card :: proc(using placer: ^BuildingPlacer, rect: ^rl.Rectangle) -> bool /*mouse in*/{
+		mpos := rl.GetMousePosition()
+		mousein := !(mpos.x < rect.x || mpos.x > rect.x + rect.width || mpos.y < rect.y || mpos.y > rect.y+rect.height)
+		if mousein {
+			if rl.IsMouseButtonPressed(.LEFT) {
+				game.current_placer = &game.building_placers[placer.building_type]
+				rl.PlaySound(game.res.select_sfx)
+			}
+		}
+		// ---
 		shadow_rect := rect^
 		shadow_rect.x += 8
 		shadow_rect.y += 8
@@ -827,6 +842,7 @@ draw_ui :: proc() {
 		rl.DrawRectangleRec(colddown_rect, {0,0,0, 64})
 
 		rect.x += rect.width + 10
+		return mousein
 	}
 
 	{
