@@ -587,7 +587,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 get_hover_text :: proc() -> cstring {
 	using game
-	hover_building := buildingmap[hover_idx]
+	hover_building := buildingmap[hover_idx] if in_range(hover_cell) else nil
 	if cell_can_repair(hover_cell) {
 		return "按[X]花费50矿修复地块"
 	} else if remove_building_timer > 0 {

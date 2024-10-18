@@ -164,9 +164,22 @@ birdgen_set :: proc(bg: ^BirdGenerator, config: EnemyWaveConfig) {
 		batch := &wave.batches[i]
 		ite : int
 		mother : Vec2i
-		for b in hla.ite_alive_value(&game.buildings, &ite) {
-			if b.type == Mother {
-				mother = b.position
+		if i == 0 { // the first enemy goes to mother
+			for b in hla.ite_alive_value(&game.buildings, &ite) {
+				if b.type == Mother {
+					mother = b.position
+					break
+				}
+			}
+		} else {
+			pick := cast(int)rand.int31()%game.buildings.count
+			p:int
+			for b in hla.ite_alive_value(&game.buildings, &ite) {
+				if p == pick {
+					mother = b.position
+					break
+				}
+				p += 1
 			}
 		}
 		offset :Vec2i= {cast(int)rand.int31()%4, cast(int)rand.int31()%4}
@@ -175,7 +188,7 @@ birdgen_set :: proc(bg: ^BirdGenerator, config: EnemyWaveConfig) {
 		batch.target = {cast(f32)(mother.x-offset.x), cast(f32)(mother.y-offset.y), w, h}
 
 		if bornpos, ok := find_born({auto_cast batch.target.x, auto_cast batch.target.y}, batch.target); ok {
-			batch.born = {cast(f32)bornpos.x, cast(f32)bornpos.y, 2,2} 
+			batch.born = {cast(f32)bornpos.x-1, cast(f32)bornpos.y-1, 3,3} 
 		} else {
 			batch.born = batch.target
 		}
@@ -212,22 +225,29 @@ birdgen_release :: proc(using bg: ^BirdGenerator) {
 find_born :: proc(from: [2]int, target: rl.Rectangle) -> (Vec2i, bool) {
 	ite:Vec3i
 	skip:=rand.int31()%10
-	preskip := 16
+	preskip := 36
 	for p in ite_around(from, 12, &ite) {
 		if preskip > 0 {
 			preskip -= 1
 			continue
 		}
 		if in_range(p) {
-			if _check(p) && _check(p+{0,1}) && _check(p+{1,0}) && _check(p+{1,1}) {
+			if _check(p) && _checks(p+{-1,1}, p+{0,1}, p+{1,1}, p+{-1,0}, p+{1,0}, p+{-1,-1}, p+{0,-1}, p+{1,-1}) {
 				if skip > 0 {
 					skip -= 1
 					continue
 				}
 				return p, true
 			}
+			_checks :: proc(ps: ..Vec2i) -> bool {
+				for p in ps {
+					if !_check(p) do return false
+				}
+				return true
+			}
 			_check :: proc(p: Vec2i) -> bool {
-				return in_range(p) && game.mask[get_index(p)] == 0
+				return in_range(p) && game.buildingmap[get_index(p)] == nil
+				// game.mask[get_index(p)] == 0
 			}
 		}
 	}
