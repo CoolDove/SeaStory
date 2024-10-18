@@ -63,6 +63,7 @@ BuildingPlacer :: struct {
 
 GameOperation :: struct {
 	hover_cell : [2]int,
+	hover_idx : int,
 	last_position : rl.Vector2,
 	mouse_position_drag_start : rl.Vector2,
 
@@ -296,6 +297,12 @@ _game_update_dead :: proc(delta: f64) {
 	}
 }
 
+cell_can_repair :: proc(p: Vec2i) -> bool {
+	using game
+	idx := get_index(p)
+	return in_range(p.x, p.y) && sunken[idx] == -1 && block[idx] != ITEM_BOMB
+}
+
 game_update :: proc(using g: ^Game, delta: f64) {
 	if dead {
 		_game_update_dead(delta)
@@ -328,6 +335,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	hover_world_position := rl.GetScreenToWorld2D(rl.GetMousePosition(), camera)
 	hover_cell = {cast(int)hover_world_position.x, cast(int)hover_world_position.y}
+	hover_idx = get_index(hover_cell)
 
 	dragged_distance := linalg.distance(mouse_position_drag_start, rl.GetMousePosition())
 
@@ -370,6 +378,15 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		}
 	}
 
+	// land repair
+	if cell_can_repair(hover_cell) {
+		if rl.IsKeyPressed(.X) {
+			sunken[hover_idx] = 0
+			mineral -= 50
+		}
+	}
+
+	// building remove
 	if in_range(hover_cell.x, hover_cell.y) && buildingmap[get_index(hover_cell)] != nil {
 		hover_building := buildingmap[get_index(hover_cell)]
 		if rl.IsKeyPressed(.X) {
@@ -570,8 +587,10 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 get_hover_text :: proc() -> cstring {
 	using game
-	hover_building := buildingmap[get_index(hover_cell)]
-	if remove_building_timer > 0 {
+	hover_building := buildingmap[hover_idx]
+	if cell_can_repair(hover_cell) {
+		return "按[X]花费50矿修复地块"
+	} else if remove_building_timer > 0 {
 		return fmt.ctprintf("拆除中{:.2f}%%", 100 * (remove_building_timer/remove_building_holdtime))
 	} else if hover_building != nil && hover_building.hitpoint < hover_building.hitpoint_define/2 {
 		if hover_building.type == Mother {

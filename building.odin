@@ -116,10 +116,10 @@ building_get_cost :: proc(bt: typeid) -> int {
 	if bt == Tower do return 150
 	if bt == PowerPump do return 60
 	if bt == Minestation do return 40
-	if bt == Wind do return 50
+	if bt == Wind do return 40
 	if bt == Probe do return 15
 	if bt == FogTower do return 180
-	if bt == CannonTower do return 80
+	if bt == CannonTower do return 60
 	return 0
 }
 // second
