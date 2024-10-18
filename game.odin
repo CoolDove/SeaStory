@@ -380,7 +380,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 
 	// land repair
 	if cell_can_repair(hover_cell) {
-		if rl.IsKeyPressed(.X) {
+		if rl.IsKeyPressed(.X) && mineral > 50 {
 			sunken[hover_idx] = 0
 			mineral -= 50
 		}
