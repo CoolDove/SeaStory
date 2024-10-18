@@ -246,7 +246,9 @@ find_born :: proc(from: [2]int, target: rl.Rectangle) -> (Vec2i, bool) {
 				return true
 			}
 			_check :: proc(p: Vec2i) -> bool {
-				return in_range(p) && game.buildingmap[get_index(p)] == nil
+				idx := get_index(p)
+				return in_range(p) && game.mask[idx] == 0 || game.sunken[idx] == -1
+				// game.buildingmap[get_index(p)] == nil
 				// game.mask[get_index(p)] == 0
 			}
 		}

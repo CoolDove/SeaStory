@@ -16,9 +16,11 @@ enemy_config :[]EnemyWaveConfig= {
 	{{{ BlackBird, 3 }, { BlackBird, 3 }}, 8},
 	{{{ BlackBird, 5 }, { BlackBird, 5 }, {PufferBird, 1}}, 8},
 
-	{{{ BlackBird, 1 }, { PufferBird, 2 }}, 9},
-	{{{ BlackBird, 2 }, { PufferBird, 2 }}, 8},
-	{{{ BlackBird, 2 }, { BlackBird, 2 }, { PufferBird, 2 }}, 8},
-	{{{ BlackBird, 4 }, { PufferBird, 3 }}, 7},
-	{{{ BlackBird, 4 }, { PufferBird, 2 }, { PufferBird, 2 }, { PufferBird, 4 }}, 9},
+	{{{ PufferBird, 1 }, { PufferBird, 2 }}, 9},
+	{{{ BlackBird, 3 }, { PufferBird, 2 }}, 8},
+	{{{ BlackBird, 2 }, { BlackBird, 2 }, { PufferBird, 2 }}, 9},
+	{{{ BlackBird, 2 }, { BlackBird, 2 }, { PufferBird, 3 }}, 9},
+	{{{ BlackBird, 3 }, { BlackBird, 3 }, { PufferBird, 2 }, { PufferBird, 2 }}, 10},
+
+	{{{ BlackBird, 3 }, { BlackBird, 4 }, { PufferBird, 3 }}, 9},
 }

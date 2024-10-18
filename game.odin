@@ -605,7 +605,7 @@ get_hover_text :: proc() -> cstring {
 get_building_remove_return :: proc(b: ^Building) -> int {
 	t := cast(f64)b.hitpoint/cast(f64)b.hitpoint_define
 	cost := cast(f64)building_get_cost(b.type)
-	return cast(int)(t*cost)
+	return cast(int)(0.8 * t*cost)
 }
 
 game_draw :: proc(using g: ^Game) {
