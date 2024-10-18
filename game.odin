@@ -552,7 +552,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		for i in land {
 			if mining[get_index(i.x,i.y)] > 0 do mining_count += 1
 		}
-		mineral += 1+ mining_count / 8
+		mineral += 1+ mining_count / 5
 		mine_time = 0
 	} else {
 		mine_time += delta
