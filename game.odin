@@ -437,53 +437,57 @@ game_update :: proc(using g: ^Game, delta: f64) {
 	}
 
 	if !mousein_ui && rl.IsMouseButtonReleased(.RIGHT) {// place building
-		if current_placer != nil && placeable {
-			b := building_new_(current_placer.building_type, hover_cell)
-			h := hla.hla_append(&g.buildings, b)
-			building_init(b)
-			buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
-			game.mineral -= building_get_cost(current_placer.building_type);
-			current_placer.colddown_time = current_placer.colddown // reset colddown
-			rl.PlaySound(res.select_sfx)
-		} else {
-			mark_toggle(&game, hover_cell.x, hover_cell.y)
-		}
+		if current_placer != nil do game.current_placer = nil
+		else do mark_toggle(&game, hover_cell.x, hover_cell.y)
 	}
 
 	if !mousein_ui && rl.IsMouseButtonReleased(.LEFT) {
-		x, y:= hover_cell.x, hover_cell.y
-		if in_range(x, y) && game.buildingmap[get_index(x, y)] == nil {
-			// ** sweep
-			if !sweep(&game, x, y) {
-				rl.PlaySound(res.error_sfx)
-				center := get_center(hover_cell)
-				vfx_boom(center, 1.35, 0.6)
-				for b in hla.ites_alive_ptr(&game.birds) {
-					dist := linalg.distance(b.pos+{0.5,0.5}, center)
-					if dist < 1.8 {
-						dmg := math.min(b.hitpoint, 200)
-						b.hitpoint -= dmg
-						vfx_number(b.pos, dmg, PLAYER_ATK_COLOR)
+		if current_placer != nil {// ** place building
+			if placeable {
+				b := building_new_(current_placer.building_type, hover_cell)
+				h := hla.hla_append(&g.buildings, b)
+				building_init(b)
+				buildingmap[get_index(hover_cell.x, hover_cell.y)] = b
+				game.mineral -= building_get_cost(current_placer.building_type);
+				current_placer.colddown_time = current_placer.colddown // reset colddown
+				rl.PlaySound(res.select_sfx)
+				game.current_placer = nil
+			}
+		} else {// ** sweep cell
+			x, y:= hover_cell.x, hover_cell.y
+			if in_range(x, y) && game.buildingmap[get_index(x, y)] == nil {
+				// ** sweep
+				if !sweep(&game, x, y) {
+					rl.PlaySound(res.error_sfx)
+					center := get_center(hover_cell)
+					vfx_boom(center, 1.35, 0.6)
+					for b in hla.ites_alive_ptr(&game.birds) {
+						dist := linalg.distance(b.pos+{0.5,0.5}, center)
+						if dist < 1.8 {
+							dmg := math.min(b.hitpoint, 200)
+							b.hitpoint -= dmg
+							vfx_number(b.pos, dmg, PLAYER_ATK_COLOR)
+						}
 					}
-				}
-				_blow_cell(hover_cell+{-1,-1})
-				_blow_cell(hover_cell+{0,-1})
-				_blow_cell(hover_cell+{1,-1})
-				_blow_cell(hover_cell+{-1,0})
-				_blow_cell(hover_cell+{0,0})
-				_blow_cell(hover_cell+{1,0})
-				_blow_cell(hover_cell+{-1,1})
-				_blow_cell(hover_cell+{0,1})
-				_blow_cell(hover_cell+{1,1})
-				_blow_cell :: proc(p: Vec2i) {
-					if !in_range(p) do return
-					idx := get_index(p.x, p.y)
-					building := game.buildingmap[get_index(p.x, p.y)]
-					if building != nil do building.hitpoint = 0
-					if game.mask[idx] != FLAG_TOUCHED {
-						sweep(&game, p.x, p.y)
+					_blow_cell(hover_cell+{-1,-1})
+					_blow_cell(hover_cell+{0,-1})
+					_blow_cell(hover_cell+{1,-1})
+					_blow_cell(hover_cell+{-1,0})
+					_blow_cell(hover_cell+{0,0})
+					_blow_cell(hover_cell+{1,0})
+					_blow_cell(hover_cell+{-1,1})
+					_blow_cell(hover_cell+{0,1})
+					_blow_cell(hover_cell+{1,1})
+					_blow_cell :: proc(p: Vec2i) {
+						if !in_range(p) do return
+						idx := get_index(p.x, p.y)
+						building := game.buildingmap[get_index(p.x, p.y)]
+						if building != nil do building.hitpoint = 0
+						if game.mask[idx] != FLAG_TOUCHED {
+							sweep(&game, p.x, p.y)
+						}
+						game.hitpoint[idx] = 0
 					}
-					game.hitpoint[idx] = 0
 				}
 			}
 		}
@@ -552,7 +556,7 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		for i in land {
 			if mining[get_index(i.x,i.y)] > 0 do mining_count += 1
 		}
-		mineral += 1+ mining_count / 5
+		mineral += 1+ mining_count / 8
 		mine_time = 0
 	} else {
 		mine_time += delta
@@ -590,7 +594,17 @@ game_update :: proc(using g: ^Game, delta: f64) {
 get_hover_text :: proc() -> cstring {
 	using game
 	hover_building := buildingmap[hover_idx] if in_range(hover_cell) else nil
-	if cell_can_repair(hover_cell) {
+	if current_placer != nil {
+		if _building_vtable(current_placer.building_type)._is_place_on_water() {
+			if mask[hover_idx] != FLAG_TOUCHED {
+				return "[左键]放置，[右键/Esc]取消"
+			} else {
+				return "这个建筑只能放在有[能源(雷)]的水面上, [左键]放置，[右键/Esc]取消"
+			}
+		} else {
+			return "[左键]放置，[右键/Esc]取消"
+		}
+	} else if cell_can_repair(hover_cell) {
 		return "按[X]花费50矿修复地块"
 	} else if remove_building_timer > 0 {
 		return fmt.ctprintf("拆除中{:.2f}%%", 100 * (remove_building_timer/remove_building_holdtime))
@@ -643,6 +657,11 @@ game_draw :: proc(using g: ^Game) {
 		hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
 		rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
 		if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
+		else if current_placer != nil {
+			p :Vec2= {cast(f32)hover_cell.x, cast(f32)hover_cell.y}
+			rl.DrawLineEx(p+{.1,.1}, p+{.8,.8}, 0.3, {230, 40, 40, 120})
+			rl.DrawLineEx(p+{.8,.1}, p+{.1,.8}, 0.3, {230, 40, 40, 120})
+		}
 
 		if placeable && current_placer != nil {
 			vtable := _building_vtable(current_placer.building_type)
@@ -864,6 +883,10 @@ draw_ui :: proc() {
 		measure := rl.MeasureTextEx(FONT_DEFAULT, game.hover_text, size, 0)
 		rl.DrawRectangleV(pos, measure, {0,0,0, 128})
 		rl.DrawTextEx(FONT_DEFAULT, game.hover_text, pos, size, 0, {240,240,240, 240})
+	}
+	{
+		rl.DrawTextEx(FONT_DEFAULT, "Shift - 查看火力覆盖情况", {10, viewport.y-80}, 26, 0, {100, 100, 100, 230})
+		rl.DrawTextEx(FONT_DEFAULT, "Alt - 查看电力，采矿情况", {10, viewport.y-50}, 26, 0, {100, 100, 100, 230})
 	}
 
 	{

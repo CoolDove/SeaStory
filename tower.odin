@@ -71,7 +71,7 @@ _Tower_VTable :Building_VTable(Tower)= {
 		}
 	},
 	preview_draw = proc(pos: Vec2i) {
-		rl.DrawCircleLinesV(get_center(pos), _range, {255, 100, 100, 128})
+		rl.DrawCircleV(get_center(pos), _range, {100, 255, 100, 128})
 	},
 	draw = proc(tower: ^Tower) {
 		tex := game.res.tower_tex

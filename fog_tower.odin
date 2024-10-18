@@ -91,7 +91,7 @@ _FogTower_VTable :Building_VTable(FogTower)= {
 		}
 	},
 	preview_draw = proc(pos: Vec2i) {
-		rl.DrawCircleLinesV(get_center(pos), 4, {255, 100, 100, 128})
+		rl.DrawCircleV(get_center(pos), 5, {100, 255, 100, 128})
 	},
 
 	init = proc(using ftower: ^FogTower) {

@@ -59,7 +59,7 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 	init = proc(using b: ^PufferBird) {
 		hitpoint_define = 180
 		hitpoint = hitpoint_define
-		attack = 100
+		attack = 110
 		speed = 0.6
 		speed_scaler = 1.0
 

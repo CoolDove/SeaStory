@@ -43,7 +43,7 @@ _PowerPump_VTable :Building_VTable(PowerPump)= {
 		draw_building_hpbar(power_pump)
 	},
 	preview_draw = proc(pos: Vec2i) {
-		rl.DrawCircleLinesV(get_center(pos), 5, {255, 100, 100, 128})
+		rl.DrawCircleV(get_center(pos), 5, {100, 255, 100, 128})
 	},
 	init = proc(power_pump: ^PowerPump) {
 		power_pump.range = 5

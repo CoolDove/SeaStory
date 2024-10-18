@@ -21,6 +21,9 @@ Minestation :: struct {
 	collect_amount : int,
 }
 
+@(private="file")
+_range :f32= 4
+
 @private
 _Minestation_VTable :Building_VTable(Minestation)= {
 	update = proc(station: ^Minestation, delta: f64) {
@@ -40,7 +43,7 @@ _Minestation_VTable :Building_VTable(Minestation)= {
 		_poweron = poweron
 	},
 	init = proc(using station: ^Minestation) {
-		range = 4
+		range = cast(f64)_range
 	},
 	release = proc(station: ^Minestation) {
 		bx, by := station.position.x, station.position.y
@@ -63,7 +66,7 @@ _Minestation_VTable :Building_VTable(Minestation)= {
 		}
 	},
 	preview_draw = proc(pos: Vec2i) {
-		rl.DrawCircleLinesV(get_center(pos), 4, {255, 100, 100, 128})
+		rl.DrawCircleV(get_center(pos), _range, {100, 255, 100, 128})
 	},
 	_is_place_on_water = proc() -> bool {
 		return true

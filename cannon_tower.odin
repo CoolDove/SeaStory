@@ -105,7 +105,7 @@ _CannonTower_VTable :Building_VTable(CannonTower)= {
 		}
 	},
 	preview_draw = proc(pos: Vec2i) {
-		rl.DrawCircleLinesV(get_center(pos), _range, {255, 100, 100, 128})
+		rl.DrawCircleV(get_center(pos), _range, {100, 255, 100, 128})
 	},
 
 	init = proc(using ctower: ^CannonTower) {
