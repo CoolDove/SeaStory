@@ -23,6 +23,7 @@ _BirdBase :: struct {
 	using vtable : ^_Bird_VTable(Bird),
 
 	hitpoint : int,
+	hitpoint_define : int,
 	pos : Vec2,
 
 	level : int,

@@ -33,10 +33,12 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 				using b
 				boomed = true
 				ite:int
+				t := cast(f64)hitpoint/cast(f64)hitpoint_define
+				dmg :int= cast(int)((t * 0.6 + 0.4) * cast(f64)attack)
 				for building in hla.ite_alive_value(&game.buildings, &ite) {
 					if linalg.distance(building.center, pos) < 2 {
-						building.hitpoint -= attack
-						vfx_number(building.center, attack, ENEMY_ATK_COLOR)
+						building.hitpoint -= dmg
+						vfx_number(building.center, dmg, ENEMY_ATK_COLOR)
 						vfx_boom(b.pos+{0.5,0.5}, auto_cast b.range, 0.6)
 					}
 				}
@@ -55,8 +57,9 @@ PufferBird_VTable :_Bird_VTable(PufferBird)= {
 	},
 
 	init = proc(using b: ^PufferBird) {
-		hitpoint = 200
-		attack = 80
+		hitpoint_define = 180
+		hitpoint = hitpoint_define
+		attack = 100
 		speed = 0.6
 		speed_scaler = 1.0
 

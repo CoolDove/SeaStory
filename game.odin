@@ -69,6 +69,11 @@ GameOperation :: struct {
 	building_placers : map[typeid]BuildingPlacer,
 	current_placer : ^BuildingPlacer,
 	placeable : bool,
+
+	remove_building_timer : f64,
+	remove_building_holdtime : f64,
+
+	hover_text : cstring,
 }
 GameResources :: struct {
 	tower_tex : rl.Texture,
@@ -211,6 +216,7 @@ game_init :: proc(g: ^Game) {
 
 	load_resource(&res)
 
+	remove_building_holdtime = 1
 	mine_interval = 1
 
 	buildings = hla.hla_make(^Building, 32)
@@ -258,7 +264,7 @@ game_init :: proc(g: ^Game) {
 
 	tw.tweener_init(&tweener, 16)
 
-	mineral = 500
+	mineral = 420
 }
 
 game_release :: proc(using g: ^Game) {
@@ -364,7 +370,30 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		}
 	}
 
-	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyReleased(.X) {
+	if in_range(hover_cell.x, hover_cell.y) && buildingmap[get_index(hover_cell)] != nil {
+		hover_building := buildingmap[get_index(hover_cell)]
+		if rl.IsKeyPressed(.X) {
+			remove_building_timer += delta
+		} else if rl.IsKeyDown(.X) {
+			if remove_building_timer > 0 {
+				remove_building_timer += delta
+				remove_building_timer = math.min(remove_building_timer, remove_building_holdtime)
+			}
+		} else if rl.IsKeyReleased(.X) && remove_building_timer >= remove_building_holdtime {
+			if hover_building != nil {
+				m := get_building_remove_return(hover_building)
+				mineral += m
+				hover_building.hitpoint = 0
+				vfx_number(hover_building.center, m, rl.YELLOW)
+			}
+		} else {
+			remove_building_timer = 0.0
+		}
+	} else {
+		remove_building_timer = 0.0
+	}
+
+	if in_range(hover_cell.x, hover_cell.y) && rl.IsKeyDown(.LEFT_ALT) && rl.IsKeyReleased(.X) {
 		idx := get_index(hover_cell.x, hover_cell.y)
 		building := game.buildingmap[idx]
 		if building != nil do building.hitpoint -= 100
@@ -504,12 +533,11 @@ game_update :: proc(using g: ^Game, delta: f64) {
 		for i in land {
 			if mining[get_index(i.x,i.y)] > 0 do mining_count += 1
 		}
-		mineral += 1+mining_count / 10
+		mineral += 1+ mining_count / 8
 		mine_time = 0
 	} else {
 		mine_time += delta
 	}
-
 
 	// bird gen
 	if game.birds.count == 0 && !birdgen_is_working(&g.birdgen) {
@@ -533,7 +561,32 @@ game_update :: proc(using g: ^Game, delta: f64) {
 			p.colddown_time = 0
 		}
 	}
+
+	hover_text = get_hover_text()
+
+
 	g.time += delta
+}
+
+get_hover_text :: proc() -> cstring {
+	using game
+	hover_building := buildingmap[get_index(hover_cell)]
+	if remove_building_timer > 0 {
+		return fmt.ctprintf("拆除中{:.2f}%%", 100 * (remove_building_timer/remove_building_holdtime))
+	} else if hover_building != nil && hover_building.hitpoint < hover_building.hitpoint_define/2 {
+		if hover_building.type == Mother {
+			return "主城会在不受攻击时缓慢恢复"
+		} else {
+			return fmt.ctprintf("长按[X]拆除建筑可返还{}点矿石", get_building_remove_return(hover_building))
+		}
+	}
+	return ""
+}
+
+get_building_remove_return :: proc(b: ^Building) -> int {
+	t := cast(f64)b.hitpoint/cast(f64)b.hitpoint_define
+	cost := cast(f64)building_get_cost(b.type)
+	return cast(int)(t*cost)
 }
 
 game_draw :: proc(using g: ^Game) {
@@ -755,6 +808,14 @@ draw_ui :: proc() {
 		rl.DrawRectangleRec(colddown_rect, {0,0,0, 64})
 
 		rect.x += rect.width + 10
+	}
+
+	{
+		pos := rl.GetMousePosition() + {6,6}
+		size :f32= 24
+		measure := rl.MeasureTextEx(FONT_DEFAULT, game.hover_text, size, 0)
+		rl.DrawRectangleV(pos, measure, {0,0,0, 128})
+		rl.DrawTextEx(FONT_DEFAULT, game.hover_text, pos, size, 0, {240,240,240, 240})
 	}
 
 	{

@@ -70,7 +70,8 @@ BlackBird_VTable :_Bird_VTable(BlackBird)= {
 	},
 
 	init = proc(using b: ^BlackBird) {
-		hitpoint = 100
+		hitpoint_define = 100
+		hitpoint = hitpoint_define
 		shoot_interval = 0.8
 		attack = 6
 		speed = 1
