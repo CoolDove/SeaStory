@@ -98,6 +98,8 @@ GameResources :: struct {
 	select_sfx : rl.Sound,
 	escape_sfx : rl.Sound,
 	error_sfx : rl.Sound,
+
+	shader_wave_grid : rl.Shader,
 }
 
 Position :: struct {
@@ -646,6 +648,27 @@ game_draw :: proc(using g: ^Game) {
 		}
 	}
 
+	rl.BeginShaderMode(res.shader_wave_grid) 
+	{
+		// @TEMPORARY
+		{
+			loc := rl.GetShaderLocation(res.shader_wave_grid, "_time")
+			time :f32= auto_cast game.time
+			rl.SetShaderValue(res.shader_wave_grid, loc, &time, .FLOAT)
+		}
+		{
+			mat_camera := rl.GetCameraMatrix2D(camera)
+			loc := rl.GetShaderLocation(res.shader_wave_grid, "_matCamera")
+			rl.SetShaderValueMatrix(res.shader_wave_grid, loc, mat_camera)
+		}
+		for x in 0..<BLOCK_WIDTH {
+			for y in 0..<BLOCK_WIDTH {
+				// draw wave grid
+					rl.DrawRectangleLinesEx(rl.Rectangle{auto_cast x, auto_cast y, 1,1}, 0.1, {0,60,155, 32})
+			}
+		}
+		rl.EndShaderMode()
+	}
 	for x in 0..<BLOCK_WIDTH {
 		for y in 0..<BLOCK_WIDTH {
 			draw_cell(g, auto_cast x, auto_cast y)
@@ -655,7 +678,23 @@ game_draw :: proc(using g: ^Game) {
 	// draw cursor
 	if !mousein_ui && in_range(hover_cell.x, hover_cell.y) {
 		hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
-		rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
+		rl.BeginShaderMode(res.shader_wave_grid) 
+		{
+			// @TEMPORARY
+			{
+				loc := rl.GetShaderLocation(res.shader_wave_grid, "_time")
+				time :f32= auto_cast game.time
+				rl.SetShaderValue(res.shader_wave_grid, loc, &time, .FLOAT)
+			}
+			{
+				mat_camera := rl.GetCameraMatrix2D(camera)
+				loc := rl.GetShaderLocation(res.shader_wave_grid, "_matCamera")
+				rl.SetShaderValueMatrix(res.shader_wave_grid, loc, mat_camera)
+			}
+			rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
+			rl.EndShaderMode()
+		}
+
 		if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
 		else if current_placer != nil {
 			p :Vec2= {cast(f32)hover_cell.x, cast(f32)hover_cell.y}
@@ -732,9 +771,8 @@ game_draw :: proc(using g: ^Game) {
 		v,m := block[idx], mask[idx]
 		pos :rl.Vector2= {cast(f32)x,cast(f32)y}
 		if m == 0 {
-			rl.DrawRectangleLinesEx(rl.Rectangle{pos.x, pos.y, 1,1}, 0.1, {0,60,155, 32})
 		} else if m == FLAG_MARKED {
-			rl.DrawRectangleLinesEx(rl.Rectangle{pos.x, pos.y, 1,1}, 0.1, {0,60,155, 32})
+			// rl.DrawRectangleLinesEx(rl.Rectangle{pos.x, pos.y, 1,1}, 0.1, {0,60,155, 32})
 			// draw flag
 			triangle := [3]rl.Vector2{ {0,0}, {0,0.4}, {0.4,0.2} }
 			offset := rl.Vector2{0.3, 0.1}

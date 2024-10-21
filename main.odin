@@ -2,6 +2,8 @@ package main
 
 import "base:runtime"
 import "core:fmt"
+import "core:os"
+import "core:io"
 import "core:reflect"
 import "core:mem"
 import "core:strconv"
@@ -219,6 +221,13 @@ load_resource :: proc(res: ^$T) {
 		} else if type.id == typeid_of(rl.Sound) {
 			ptr :^rl.Sound = cast(^rl.Sound)(cast(uintptr)res+offset)
 			ptr^ = rl.LoadSound(fmt.ctprintf("res/{}.mp3", name))
+		} else if type.id == typeid_of(rl.Shader) {
+			ptr :^rl.Shader = cast(^rl.Shader)(cast(uintptr)res+offset)
+			vs := fmt.ctprintf("res/{}.vs", strings.trim_prefix(name, "shader_"))
+			fs := fmt.ctprintf("res/{}.fs", strings.trim_prefix(name, "shader_"))
+			if !os.exists(auto_cast vs) do vs = {}
+			if !os.exists(auto_cast fs) do fs = {}
+			ptr^ = rl.LoadShader(vs, fs)
 		}
 	}
 }
@@ -239,6 +248,9 @@ unload_resource :: proc(res: ^$T) {
 		} else if type.id == typeid_of(rl.Sound) {
 			ptr :^rl.Sound = cast(^rl.Sound)(cast(uintptr)res+offset)
 			rl.UnloadSound(ptr^)
+		} else if type.id == typeid_of(rl.Shader) {
+			ptr :^rl.Shader = cast(^rl.Shader)(cast(uintptr)res+offset)
+			rl.UnloadShader(ptr^)
 		}
 	}
 }
