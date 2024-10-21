@@ -66,12 +66,14 @@ void main()
 	fragTexCoord = vertexTexCoord;
 	vec4 wpos = (mvp * inverse(_matCamera))*vec4(vertexPosition, 1.0);
 	float noise = perlin(100*vec2(wpos.x, wpos.y)+vec2(_time, _time)*0.5);
+	float noise2 = perlin(500*vec2(wpos.x, wpos.y)+vec2(_time, _time)*0.8);
+	noise = (noise+noise2)*0.5;
 	_oWorldPos = wpos;
 
 	// uniforms
 	fragColor = vertexColor;
 
 	// Calculate final vertex position
-	gl_Position = mvp*vec4(vertexPosition+0.05*vec3(noise,noise, 0), 1.0);
+	gl_Position = mvp*vec4(vertexPosition+0.1*vec3(noise,noise, 0), 1.0);
 
 }

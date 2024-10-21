@@ -627,27 +627,6 @@ get_building_remove_return :: proc(b: ^Building) -> int {
 }
 
 game_draw :: proc(using g: ^Game) {
-	for x in 0..<BLOCK_WIDTH {
-		for y in 0..<BLOCK_WIDTH {
-			pos := rl.Vector2{cast(f32)x,cast(f32)y}
-			n := noise.noise_2d(42, noise.Vec2{cast(f64)x,cast(f64)y}+0.6*{time, time})
-			m := mask[get_index(cast(int)x,cast(int)y)]
-			if m == FLAG_TOUCHED {
-				points : [4]rl.Vector2
-				points[0] = pos + {0.1, 0.1}
-				points[1] = pos + {1.1, 0.1}
-				points[2] = pos + {1.1, 1.1}
-				points[3] = pos + {0.1, 1.1}
-				for i in 0..<4 {
-					p := points[i]
-					points[i] = p + 0.04 * noise.noise_2d(42, noise.Vec2{cast(f64)p.x,cast(f64)p.y}+0.6*{time, time})
-				}
-				rl.DrawTriangle( points[0], points[2], points[1] , {0,0,0, 64})
-				rl.DrawTriangle( points[0], points[3], points[2] , {0,0,0, 64})
-			}
-		}
-	}
-
 	rl.BeginShaderMode(res.shader_wave_grid) 
 	{
 		// @TEMPORARY
@@ -661,10 +640,14 @@ game_draw :: proc(using g: ^Game) {
 			loc := rl.GetShaderLocation(res.shader_wave_grid, "_matCamera")
 			rl.SetShaderValueMatrix(res.shader_wave_grid, loc, mat_camera)
 		}
+		// draw wave grid
 		for x in 0..<BLOCK_WIDTH {
 			for y in 0..<BLOCK_WIDTH {
-				// draw wave grid
-					rl.DrawRectangleLinesEx(rl.Rectangle{auto_cast x, auto_cast y, 1,1}, 0.1, {0,60,155, 32})
+				rl.DrawRectangleLinesEx(rl.Rectangle{auto_cast x, auto_cast y, 1,1}, 0.1, {0,60,155, 32})
+				m := mask[get_index(cast(int)x,cast(int)y)]
+				if m == FLAG_TOUCHED {
+					rl.DrawRectangleV({auto_cast x, auto_cast y}+{0.1,0.1}, {1,1}, {0,0,0, 64})
+				}
 			}
 		}
 		rl.EndShaderMode()
@@ -678,22 +661,7 @@ game_draw :: proc(using g: ^Game) {
 	// draw cursor
 	if !mousein_ui && in_range(hover_cell.x, hover_cell.y) {
 		hover_cell_corner := Vec2{cast(f32)hover_cell.x, cast(f32)hover_cell.y}
-		rl.BeginShaderMode(res.shader_wave_grid) 
-		{
-			// @TEMPORARY
-			{
-				loc := rl.GetShaderLocation(res.shader_wave_grid, "_time")
-				time :f32= auto_cast game.time
-				rl.SetShaderValue(res.shader_wave_grid, loc, &time, .FLOAT)
-			}
-			{
-				mat_camera := rl.GetCameraMatrix2D(camera)
-				loc := rl.GetShaderLocation(res.shader_wave_grid, "_matCamera")
-				rl.SetShaderValueMatrix(res.shader_wave_grid, loc, mat_camera)
-			}
-			rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
-			rl.EndShaderMode()
-		}
+		rl.DrawRectangleV(hover_cell_corner, {1,1}, {255,255,255, 80})
 
 		if placeable do rl.DrawCircleV(hover_cell_corner+{0.5,0.5}, 0.4, {20, 240, 20, 90})
 		else if current_placer != nil {
