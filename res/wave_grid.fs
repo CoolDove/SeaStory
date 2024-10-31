@@ -26,8 +26,6 @@ float weight[3] = float[](0.2270270270, 0.3162162162, 0.0702702703);
 void main()
 {
 	vec4 color = texture(texture0, fragTexCoord);
-
-	// finalColor = vec4(fract(_oWorldPos.x), fract(_oWorldPos.y), fract(_oWorldPos.z), 1) * vec4(texelColor, 1.0);
 	finalColor = fragColor * color;
 }
 

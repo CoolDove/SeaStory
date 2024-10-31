@@ -610,11 +610,17 @@ get_hover_text :: proc() -> cstring {
 		return "按[X]花费50矿修复地块"
 	} else if remove_building_timer > 0 {
 		return fmt.ctprintf("拆除中{:.2f}%%", 100 * (remove_building_timer/remove_building_holdtime))
-	} else if hover_building != nil && hover_building.hitpoint < hover_building.hitpoint_define/2 {
-		if hover_building.type == Mother {
-			return "主城会在不受攻击时缓慢恢复"
+	} else if hover_building != nil {
+		if hover_building.hitpoint < hover_building.hitpoint_define/2 {
+			if hover_building.type == Mother {
+				return "主城会在不受攻击时缓慢恢复"
+			} else {
+				return fmt.ctprintf("长按[X]拆除建筑可返还{}点矿石", get_building_remove_return(hover_building))
+			}
 		} else {
-			return fmt.ctprintf("长按[X]拆除建筑可返还{}点矿石", get_building_remove_return(hover_building))
+			if hover_building.powered == 0 {
+				return "没电啊，给我建个[能源泵]吧"
+			}
 		}
 	}
 	return ""
